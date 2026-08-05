@@ -5,21 +5,23 @@ from PIL import Image
 
 st.set_page_config(page_title="Gerenciamento de Estoque", page_icon="📦", layout="wide")
 
-# CSS para padronizar perfeitamente a altura das imagens e dos cards na galeria
+# CSS para padronizar perfeitamente a altura e alinhamento dos cards da galeria
 st.markdown("""
 <style>
-    .card-img-container {
-        height: 140px;
+    .card-img-box {
+        width: 100%;
+        height: 160px;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 8px;
-        overflow: hidden;
+        margin-bottom: 10px;
+        background-color: transparent;
     }
-    .card-img-container img {
-        max-height: 140px !important;
+    .card-img-box img {
+        max-height: 150px !important;
+        max-width: 100% !important;
         width: auto !important;
-        object-fit: contain;
+        object-fit: contain !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -76,7 +78,7 @@ def redimensionar_e_salvar_imagem(imagem_file, nome_produto):
   try:
     os.makedirs(PASTA_IMAGENS, exist_ok=True)
     img = Image.open(imagem_file)
-    img.thumbnail((250, 250))
+    img.thumbnail((300, 300))
     nome_arquivo_limpo = "".join(c for c in nome_produto if c.isalnum() or c in (' ', '_', '-')).strip().replace(' ', '_')
     extensao = os.path.splitext(imagem_file.name)[1].lower()
     if not extensao:
@@ -224,7 +226,6 @@ else:
   if df_estoque.empty or df_estoque["Produto"].dropna().empty:
     st.info("Nenhum produto cadastrado no momento.")
   else:
-    # Filtros compactos lado a lado (Pesquisa inteligente + Categoria)
     col_f1, col_f2 = st.columns([2, 1])
     with col_f1:
       termo_busca = st.text_input("🔍 Pesquisa inteligente:", placeholder="Digite para filtrar instantaneamente (ex: HEIN)...", label_visibility="collapsed")
@@ -232,7 +233,6 @@ else:
       categorias_disponiveis = ["Todas as categorias"] + list(df_estoque["Categoria"].dropna().unique())
       cat_filtro = st.selectbox("Categoria", categorias_disponiveis, label_visibility="collapsed")
 
-    # Aplicação dos filtros em tempo real
     df_galeria = df_estoque.copy()
     if termo_busca:
       df_galeria = df_galeria[df_galeria["Produto"].str.contains(termo_busca, case=False, na=False)]
@@ -252,13 +252,13 @@ else:
           with st.container(border=True):
             caminho_img = str(row["Imagem"])
             
-            # Imagem encapsulada em uma div com tamanho fixo padronizado pelo CSS
+            # Caixa HTML rígida para manter a imagem alinhada e com o mesmo espaço em todos os cards
             if caminho_img and caminho_img != "nan" and os.path.exists(caminho_img):
-              st.markdown(f"<div class='card-img-container'>", unsafe_allow_html=True)
+              st.markdown(f"<div class='card-img-box'>", unsafe_allow_html=True)
               st.image(caminho_img, use_container_width=False)
               st.markdown("</div>", unsafe_allow_html=True)
             else:
-              st.markdown("<div class='card-img-container' style='color: gray; font-size: 11px;'>Sem foto</div>", unsafe_allow_html=True)
+              st.markdown("<div class='card-img-box' style='color: gray; font-size: 11px;'>Sem foto</div>", unsafe_allow_html=True)
 
             produto_nome = str(row['Produto'])
             custo = float(row['Preço de Custo (R$)']) if pd.notna(row['Preço de Custo (R$)']) else 0.0
@@ -280,7 +280,7 @@ else:
 
             card_html = f"""
             <div style="font-size: 11px; line-height: 1.3; margin-bottom: 5px; text-align: center;">
-              <b style="font-size: 12px; display: block; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333;">{produto_nome}</b>
+              <b style="font-size: 12px; display: block; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333;" title="{produto_nome}">{produto_nome}</b>
               
               <div style="background-color: {bg_estoque}; color: {cor_estoque}; padding: 3px 6px; border-radius: 4px; margin-bottom: 3px; font-weight: bold; text-align: center;">
                 📦 Estoque: {qtd} un.{alerta_txt}
