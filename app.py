@@ -52,8 +52,7 @@ def painel_principal():
     
     st.sidebar.markdown("### 📂 Menu do Sistema")
     
-    # Links diretos para as páginas na pasta pages/
-    st.sidebar.page_link("app.py", label="Início / Dashboard", icon="🏠")
+    # Links apenas para as páginas dentro da pasta pages/
     st.sidebar.page_link("pages/estoque.py", label="Gerenciar Estoque", icon="📦")
     st.sidebar.page_link("pages/pdv.py", label="Frente de Caixa (PDV)", icon="🛒")
     
