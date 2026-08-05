@@ -1,14 +1,12 @@
 import streamlit as st
 import pandas as pd
 from PIL import Image
-import io
 import os
 
-st.set_page_config(page_title="Controle de Estoque e PDV - Jurerê", layout="wide")
+st.set_page_config(page_title="Início", layout="wide")
 
 ARQUIVO_ESTOQUE = "estoque.csv"
 
-# Categorias padronizadas em ordem alfabética estrita
 CATEGORIAS_PADRAO = [
     "Água",
     "Cervejas",
@@ -40,12 +38,10 @@ def salvar_dados(df):
 def processar_e_salvar_imagem(imagem_upload, nome_arquivo_destino):
     os.makedirs("imagens_produtos", exist_ok=True)
     caminho_completo = os.path.join("imagens_produtos", nome_arquivo_destino)
-    
     try:
         img = Image.open(imagem_upload)
         if img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
-            
         img.thumbnail((400, 400), Image.Resampling.LANCZOS)
         img.save(caminho_completo, "JPEG", quality=90)
         return caminho_completo
@@ -89,54 +85,60 @@ if check_password():
     if escolha != st.session_state['menu_selecionado']:
         st.session_state['menu_selecionado'] = escolha
 
-    # 0. INÍCIO (TELA DE NAVEGAÇÃO EM GALERIA/ÍCONES)
+    # 0. INÍCIO
     if st.session_state['menu_selecionado'] == "Início":
         st.header("🏠 Início")
         st.markdown("Selecione abaixo para onde deseja navegar:")
         
         st.markdown("""
         <style>
-        div.stButton > button {
+        .card-container {
             background-color: #ffffff;
             border: 1px solid #e0e0e0;
-            border-radius: 10px;
-            padding: 30px 20px;
+            border-radius: 12px;
+            padding: 24px;
             text-align: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            transition: 0.3s;
-            width: 100%;
-            color: #31333F;
-        }
-        div.stButton > button:hover {
-            box-shadow: 0 6px 12px rgba(0,0,0,0.12);
-            border-color: #2b6cb0;
-            background-color: #fafafa;
-            color: #2b6cb0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+            margin-bottom: 15px;
         }
         </style>
         """, unsafe_allow_html=True)
 
-        col_d1, col_d2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         
-        with col_d1:
-            if st.button("🛒\n\n### PDV / Vendas\nRealizar vendas, visualizar produtos por categoria em formato de galeria.", key="btn_dash_pdv", use_container_width=True):
+        with col1:
+            st.markdown("""
+            <div class="card-container">
+                <div style="font-size: 36px; margin-bottom: 10px;">🛒</div>
+                <h3 style="margin: 0 0 8px 0; color: #1f1f1f; font-size: 20px;">PDV (Vendas)</h3>
+                <p style="color: #666; font-size: 14px; margin-bottom: 0px;">Realizar vendas e visualizar produtos por categoria.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button("Acessar PDV", key="nav_pdv", use_container_width=True):
                 st.session_state['menu_selecionado'] = "PDV (Vendas / Navegação)"
                 st.rerun()
 
-            st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
-
-            if st.button("📦\n\n### Estoque Atual / Editar\nConsultar tabela de estoque, conferir itens e editar preços ou quantidades.", key="btn_dash_estoque", use_container_width=True):
+        with col2:
+            st.markdown("""
+            <div class="card-container">
+                <div style="font-size: 36px; margin-bottom: 10px;">📦</div>
+                <h3 style="margin: 0 0 8px 0; color: #1f1f1f; font-size: 20px;">Estoque (Gerenciar)</h3>
+                <p style="color: #666; font-size: 14px; margin-bottom: 0px;">Consultar tabela, cadastrar itens e editar preços ou quantidades.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button("Acessar Estoque", key="nav_estoque", use_container_width=True):
                 st.session_state['menu_selecionado'] = "Estoque Atual / Editar"
                 st.rerun()
 
-        with col_d2:
-            if st.button("✨\n\n### Cadastrar Novo Item\nAdicionar novos produtos com foto, nome, categorias e preços obrigatórios.", key="btn_dash_cadastrar", use_container_width=True):
-                st.session_state['menu_selecionado'] = "Cadastrar Item"
-                st.rerun()
-
-            st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
-
-            if st.button("🔄\n\n### Movimentação\nEntradas e baixas manuais rápidas no estoque.", key="btn_dash_mov", use_container_width=True):
+        with col3:
+            st.markdown("""
+            <div class="card-container">
+                <div style="font-size: 36px; margin-bottom: 10px;">💵</div>
+                <h3 style="margin: 0 0 8px 0; color: #1f1f1f; font-size: 20px;">Caixa (Balcão)</h3>
+                <p style="color: #666; font-size: 14px; margin-bottom: 0px;">Entradas e baixas manuais rápidas no estoque e balcão.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button("Acessar Caixa", key="nav_caixa", use_container_width=True):
                 st.session_state['menu_selecionado'] = "Movimentação"
                 st.rerun()
 
@@ -146,14 +148,13 @@ if check_password():
         df = st.session_state['estoque']
         
         if df.empty:
-            st.info("Nenhum item cadastrado no estoque ainda. Cadastre itens no menu lateral ou início.")
+            st.info("Nenhum item cadastrado no estoque ainda.")
         else:
             categorias_disponiveis = sorted(df['Categoria'].dropna().unique().tolist())
             if not categorias_disponiveis:
                 categorias_disponiveis = ["Geral"]
                 
             categoria_selecionada = st.selectbox("📂 Selecione a Categoria:", categorias_disponiveis)
-            
             itens_categoria = df[df['Categoria'] == categoria_selecionada]
             
             st.markdown("---")
@@ -170,9 +171,6 @@ if check_password():
                 margin-bottom: 20px;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.05);
                 height: 100%;
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
             }
             .product-img-container {
                 width: 100%;
@@ -212,13 +210,11 @@ if check_password():
 
                     st.markdown(f"""
                     <div class="product-card">
-                        <div>
-                            <h4 style="margin: 0 0 10px 0; color: #333; font-size: 18px;">{row['Nome']}</h4>
-                            {img_html}
-                            <p style="margin: 5px 0; font-size: 15px;"><strong>Preço:</strong> R$ {float(preco_venda_val):.2f}</p>
-                            <p style="margin: 5px 0; font-size: 14px; color: #555;"><strong>Estoque:</strong> {qtd_val} un.</p>
-                            <p style="margin: 5px 0; font-size: 13px; color: #777; font-style: italic;">{desc_val}</p>
-                        </div>
+                        <h4 style="margin: 0 0 10px 0; color: #333; font-size: 18px;">{row['Nome']}</h4>
+                        {img_html}
+                        <p style="margin: 5px 0; font-size: 15px;"><strong>Preço:</strong> R$ {float(preco_venda_val):.2f}</p>
+                        <p style="margin: 5px 0; font-size: 14px; color: #555;"><strong>Estoque:</strong> {qtd_val} un.</p>
+                        <p style="margin: 5px 0; font-size: 13px; color: #777; font-style: italic;">{desc_val}</p>
                     </div>
                     """, unsafe_allow_html=True)
                     
@@ -236,11 +232,8 @@ if check_password():
     # 2. CADASTRAR ITEM
     elif st.session_state['menu_selecionado'] == "Cadastrar Item":
         st.header("✨ Cadastrar Novo Item")
-        st.markdown("Preencha os campos abaixo de forma rápida utilizando a tecla **Tab**.")
-
         with st.form("form_cadastro_item", clear_on_submit=True):
             col1, col2 = st.columns(2)
-
             with col1:
                 nome = st.text_input("Nome do Item *", placeholder="Ex: Heineken 600ml")
                 cat_escolhida = st.selectbox("Categoria (Obrigatório) *", CATEGORIAS_PADRAO, index=None, placeholder="Selecione uma categoria...")
@@ -248,26 +241,14 @@ if check_password():
                     categoria = st.text_input("Especifique a nova categoria *")
                 else:
                     categoria = cat_escolhida
-                
                 preco_custo = st.number_input("Preço de Custo (R$) *", min_value=0.0, format="%.2f", value=0.0)
-
             with col2:
                 preco_venda = st.number_input("Preço de Venda (R$) *", min_value=0.0, format="%.2f", value=0.0)
                 quantidade_inicial = st.number_input("Quantidade Inicial", min_value=0, step=1, value=0)
                 quantidade_minima = st.number_input("Quantidade Mínima (Alerta)", min_value=0, step=1, value=5)
 
-            descricao = st.text_area("Descrição do Produto", placeholder="Detalhes, ingredientes ou observações...", height=100)
-
-            if preco_venda > 0 and preco_custo > 0:
-                lucro_rs = preco_venda - preco_custo
-                margem_pct = (lucro_rs / preco_venda) * 100
-                markup_pct = (lucro_rs / preco_custo) * 100
-                st.info(f"📊 **Análise de Margem:** Lucro de **R$ {lucro_rs:.2f}** | Margem: **{margem_pct:.1f}%** (Markup: {markup_pct:.1f}%)")
-
-            st.markdown("---")
-            st.subheader("🖼️ Foto do Produto")
-            imagem_arquivo = st.file_uploader("Escolher imagem", type=["png", "jpg", "jpeg", "webp"], label_visibility="collapsed")
-
+            descricao = st.text_area("Descrição do Produto", placeholder="Detalhes ou observações...", height=100)
+            imagem_arquivo = st.file_uploader("Escolher imagem", type=["png", "jpg", "jpeg", "webp"])
             submitted = st.form_submit_button("💾 Salvar Novo Item no Estoque", use_container_width=True)
 
             if submitted:
@@ -276,40 +257,26 @@ if check_password():
                     caminho_salvo = None
                     if imagem_arquivo is not None:
                         nome_limpo = "".join(c for c in nome if c.isalnum() or c in (' ', '_', '-')).strip().replace(' ', '_')
-                        if not nome_limpo:
-                            nome_limpo = "produto"
-                        nome_arquivo_final = f"{nome_limpo}_{os.urandom(4).hex()}.jpg"
-                        caminho_salvo = processar_e_salvar_imagem(imagem_arquivo, nome_arquivo_final)
-
+                        caminho_salvo = processar_e_salvar_imagem(imagem_arquivo, f"{nome_limpo}_{os.urandom(4).hex()}.jpg")
                     df_atual = st.session_state['estoque']
                     novo_id = int(df_atual['ID'].max() + 1) if not df_atual.empty and pd.notna(df_atual['ID'].max()) else 1
-                    
                     novo_dado = pd.DataFrame([{
-                        'ID': novo_id,
-                        'Nome': nome,
-                        'Categoria': categoria,
-                        'Descrição': descricao,
-                        'Preço_Custo': preco_custo,
-                        'Custo': preco_venda,
-                        'Quantidade': quantidade_inicial,
-                        'Qtd_Minima': quantidade_minima,
-                        'Caminho_Imagem': caminho_salvo
+                        'ID': novo_id, 'Nome': nome, 'Categoria': categoria, 'Descrição': descricao,
+                        'Preço_Custo': preco_custo, 'Custo': preco_venda, 'Quantidade': quantidade_inicial,
+                        'Qtd_Minima': quantidade_minima, 'Caminho_Imagem': caminho_salvo
                     }])
-                    
                     st.session_state['estoque'] = pd.concat([df_atual, novo_dado], ignore_index=True)
                     salvar_dados(st.session_state['estoque'])
-                    
                     st.session_state['menu_selecionado'] = "Início"
-                    st.success(f"🎉 Item '{nome}' cadastrado com sucesso! Redirecionando para o Início...")
+                    st.success(f"🎉 Item '{nome}' cadastrado com sucesso!")
                     st.rerun()
                 else:
-                    st.warning("⚠️ Preencha todos os campos obrigatórios: **Nome**, **Categoria**, **Preço de Custo** e **Preço de Venda** (maiores que zero).")
+                    st.warning("⚠️ Preencha todos os campos obrigatórios.")
 
     # 3. ESTOQUE ATUAL E TELA DE EDIÇÃO
     elif st.session_state['menu_selecionado'] == "Estoque Atual / Editar":
-        st.header("Estoque Atual e Gerenciamento")
+        st.header("📦 Estoque Atual e Gerenciamento")
         df = st.session_state['estoque']
-        
         if df.empty:
             st.info("Nenhum item cadastrado no estoque ainda.")
         else:
@@ -317,81 +284,14 @@ if check_password():
             st.dataframe(df[cols_mostrar], use_container_width=True)
             
             st.markdown("---")
-            st.subheader("✏️ Editar um Item Existente")
-            
-            item_ids = df['ID'].tolist()
-            item_escolhido_id = st.selectbox("Selecione o ID do item que deseja editar:", item_ids)
-            
-            item_atual = df.loc[df['ID'] == item_escolhido_id].iloc[0]
-            
-            with st.form("form_edicao"):
-                col_e1, col_e2 = st.columns(2)
-                with col_e1:
-                    novo_nome = st.text_input("Nome", value=item_atual['Nome'])
-                    
-                    cat_atual_val = item_atual['Categoria']
-                    idx_cat = CATEGORIAS_PADRAO.index(cat_atual_val) if cat_atual_val in CATEGORIAS_PADRAO else len(CATEGORIAS_PADRAO)-1
-                    nova_cat_escolhida = st.selectbox("Categoria", CATEGORIAS_PADRAO, index=idx_cat)
-                    if nova_cat_escolhida == "Outros":
-                        nova_categoria = st.text_input("Digite a categoria:", value=cat_atual_val)
-                    else:
-                        nova_categoria = nova_cat_escolhida
-                        
-                    pc_atual = float(item_atual['Preço_Custo']) if pd.notna(item_atual.get('Preço_Custo')) else 0.0
-                    novo_preco_custo = st.number_input("Preço de Custo (R$)", value=pc_atual, format="%.2f")
-                    
-                    pv_atual = float(item_atual['Custo']) if pd.notna(item_atual.get('Custo')) else 0.0
-                    novo_preco_venda = st.number_input("Preço de Venda (R$)", value=pv_atual, format="%.2f")
+            if st.button("➕ Ir para Cadastro de Novo Item"):
+                st.session_state['menu_selecionado'] = "Cadastrar Item"
+                st.rerun()
 
-                with col_e2:
-                    qtd_at = int(item_atual['Quantidade']) if pd.notna(item_atual.get('Quantidade')) else 0
-                    nova_qtd = st.number_input("Quantidade", value=qtd_at, step=1)
-                    
-                    qtd_min_at = int(item_atual['Qtd_Minima']) if pd.notna(item_atual.get('Qtd_Minima')) else 5
-                    nova_qtd_min = st.number_input("Quantidade Mínima", value=qtd_min_at, step=1)
-                    
-                    nova_desc = st.text_area("Descrição", value=item_atual['Descrição'] if pd.notna(item_atual['Descrição']) else "")
-                
-                st.write("Imagem atual do item:")
-                img_path_atual = item_atual['Caminho_Imagem']
-                if pd.notna(img_path_atual) and os.path.exists(str(img_path_atual)):
-                    st.image(str(img_path_atual), width=150)
-                else:
-                    st.write("Sem imagem cadastrada.")
-                
-                alterar_img = st.file_uploader("Enviar nova imagem (opcional)", type=["png", "jpg", "jpeg", "webp"])
-                
-                atualizar_btn = st.form_submit_button("Salvar Alterações")
-                
-                if atualizar_btn:
-                    idx = st.session_state['estoque'][st.session_state['estoque']['ID'] == item_escolhido_id].index[0]
-                    st.session_state['estoque'].at[idx, 'Nome'] = novo_nome
-                    st.session_state['estoque'].at[idx, 'Categoria'] = nova_categoria
-                    st.session_state['estoque'].at[idx, 'Descrição'] = nova_desc
-                    st.session_state['estoque'].at[idx, 'Preço_Custo'] = novo_preco_custo
-                    st.session_state['estoque'].at[idx, 'Custo'] = novo_preco_venda
-                    st.session_state['estoque'].at[idx, 'Quantidade'] = nova_qtd
-                    st.session_state['estoque'].at[idx, 'Qtd_Minima'] = nova_qtd_min
-                    
-                    if alterar_img is not None:
-                        nome_limpo = "".join(c for c in novo_nome if c.isalnum() or c in (' ', '_', '-')).strip().replace(' ', '_')
-                        if not nome_limpo:
-                            nome_limpo = "produto"
-                        nome_arquivo_final = f"{nome_limpo}_{item_escolhido_id}.jpg"
-                        
-                        novo_caminho = processar_e_salvar_imagem(alterar_img, nome_arquivo_final)
-                        if novo_caminho:
-                            st.session_state['estoque'].at[idx, 'Caminho_Imagem'] = novo_caminho
-                        
-                    salvar_dados(st.session_state['estoque'])
-                    st.success("Item atualizado com sucesso!")
-                    st.rerun()
-
-    # 4. MOVIMENTAÇÃO
+    # 4. MOVIMENTAÇÃO / CAIXA
     elif st.session_state['menu_selecionado'] == "Movimentação":
-        st.header("Movimentação de Estoque Manual (Entrada/Saída)")
+        st.header("💵 Caixa - Movimentação Manual")
         df = st.session_state['estoque']
-        
         if df.empty:
             st.info("Nenhum item cadastrado para movimentar.")
         else:
@@ -402,7 +302,6 @@ if check_password():
             if st.button("Confirmar Movimentação"):
                 idx = st.session_state['estoque'][st.session_state['estoque']['Nome'] == item_nome].index[0]
                 qtd_atual = int(st.session_state['estoque'].at[idx, 'Quantidade'])
-                
                 if tipo_mov == "Entrada (Adicionar)":
                     nova_qtd = qtd_atual + qtd_mov
                     st.session_state['estoque'].at[idx, 'Quantidade'] = nova_qtd
@@ -415,4 +314,4 @@ if check_password():
                         salvar_dados(st.session_state['estoque'])
                         st.success(f"Baixa realizada! Nova quantidade de {item_nome}: {nova_qtd}")
                     else:
-                        st.error("Quantidade em estoque insuficiente para essa baixa!")
+                        st.error("Quantidade em estoque insuficiente!")
