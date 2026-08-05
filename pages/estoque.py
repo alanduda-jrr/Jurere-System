@@ -71,7 +71,7 @@ def redimensionar_e_salvar_imagem(imagem_file, nome_produto):
 df_estoque = carregar_estoque()
 df_caixa = carregar_vendas()
 
-# Função de Modal para Edição (Garante o fechamento automático e mensagem na tela principal)
+# Função de Modal para Edição
 @st.dialog("✏️ Editar Produto")
 def modal_editar(row_id):
   df = carregar_estoque()
@@ -121,21 +121,33 @@ def modal_editar(row_id):
 
       salvar_estoque(df)
       
-      # Salva mensagem de sucesso no session_state para exibir na tela principal após fechar o modal
+      # Define mensagem e força o estado para abrir na aba da galeria
       st.session_state["msg_sucesso"] = f"✅ Alteração realizada com sucesso no produto '{novo_nome}'!"
+      st.session_state["aba_ativa"] = "galeria"
       st.rerun()
 
 st.title("📦 Gerenciamento de Estoque")
 st.markdown("Catálogo compacto em grade de 5 colunas com janelas modulares de edição.")
 
-# Exibe mensagem de sucesso vinda de salvamentos anteriores
 if "msg_sucesso" in st.session_state:
   st.success(st.session_state["msg_sucesso"])
   del st.session_state["msg_sucesso"]
 
-aba1, aba2 = st.tabs(["➕ Cadastrar Novo Item", "🖼️ Mini Galeria de Estoque"])
+# Define a aba padrão se não existir
+if "aba_ativa" not in st.session_state:
+  st.session_state["aba_ativa"] = "cadastro"
 
-with aba1:
+# Criação das abas controlada pelo session_state
+aba_selecionada = st.radio(
+    "Navegação",
+    ["➕ Cadastrar Novo Item", "🖼️ Mini Galeria de Estoque"],
+    index=1 if st.session_state["aba_ativa"] == "galeria" else 0,
+    horizontal=True,
+    label_visibility="collapsed"
+)
+
+if "Cadastrar" in aba_selecionada:
+  st.session_state["aba_ativa"] = "cadastro"
   st.subheader("Cadastro de Produto")
   with st.form("form_cadastro_avancado", clear_on_submit=True):
     col1, col2 = st.columns(2)
@@ -180,10 +192,12 @@ with aba1:
 
         df_estoque = pd.concat([df_estoque, novo_dado], ignore_index=True)
         salvar_estoque(df_estoque)
-        st.success("✅ Produto cadastrado com sucesso!")
+        st.session_state["msg_sucesso"] = "✅ Produto cadastrado com sucesso!"
+        st.session_state["aba_ativa"] = "galeria"
         st.rerun()
 
-with aba2:
+else:
+  st.session_state["aba_ativa"] = "galeria"
   st.subheader("Galeria Compacta")
 
   df_estoque = carregar_estoque()
@@ -240,6 +254,5 @@ with aba2:
           """
           st.markdown(card_html, unsafe_allow_html=True)
 
-          # Botão que abre a janela modal de edição limpa e isolada
           if st.button("✏️ Alterar", key=f"btn_alt_{row['ID']}", use_container_width=True):
             modal_editar(row['ID'])
