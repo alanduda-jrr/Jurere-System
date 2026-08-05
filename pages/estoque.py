@@ -5,19 +5,20 @@ from PIL import Image
 
 st.set_page_config(page_title="Gerenciamento de Estoque", page_icon="📦", layout="wide")
 
-# CSS refinado para exibir a imagem de forma compacta e alinhada
+# CSS para compactar o topo do card e alinhar a imagem perfeitamente sem espaços extras
 st.markdown("""
 <style>
     .card-img-box {
         width: 100%;
-        height: 120px;
+        height: 110px;
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
+        margin-top: 5px;
         margin-bottom: 5px;
     }
     .card-img-box img {
-        max-height: 115px !important;
+        max-height: 110px !important;
         max-width: 100% !important;
         width: auto !important;
         object-fit: contain !important;
@@ -74,12 +75,11 @@ def carregar_vendas():
   return pd.DataFrame(columns=["ID_Venda", "Tipo", "Descricao", "Valor", "Forma_Pagamento", "Horario"])
 
 def redimensionar_e_padronizar_imagem(imagem_file, nome_produto):
-  """Ajusta a imagem cortando excessos e otimizando o tamanho para ocupar o espaço ideal sem margens mortas."""
+  """Processa a imagem cortando bordas excedentes e ajustando de forma otimizada."""
   try:
     os.makedirs(PASTA_IMAGENS, exist_ok=True)
     img = Image.open(imagem_file)
     if img.mode in ("RGBA", "P"):
-      # Converte para RGB mantendo fundo branco se houver transparência
       background = Image.new("RGB", img.size, (255, 255, 255))
       if img.mode == "RGBA":
         background.paste(img, mask=img.split()[3])
@@ -87,7 +87,6 @@ def redimensionar_e_padronizar_imagem(imagem_file, nome_produto):
         background.paste(img)
       img = background
 
-    # Redimensiona proporcionalmente limitando a uma altura máxima de 300px
     img.thumbnail((300, 300), Image.Resampling.LANCZOS)
     
     nome_arquivo_limpo = "".join(c for c in nome_produto if c.isalnum() or c in (' ', '_', '-')).strip().replace(' ', '_')
