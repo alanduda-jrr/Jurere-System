@@ -134,8 +134,7 @@ if check_password():
         
         nome = st.text_input("Nome do Item")
         
-        # Categoria padronizada com selectbox
-        cat_escolhida = st.selectbox("Categoria", CATEGORIAS_PADRAO)
+        cat_escolhida = st.selectbox("Categoria (Padronizada)", CATEGORIAS_PADRAO)
         if cat_escolhida == "Outros":
             categoria = st.text_input("Digite o nome da nova categoria:")
         else:
@@ -145,10 +144,10 @@ if check_password():
         custo = st.number_input("Preço de Custo / Venda (R$)", min_value=0.0, format="%.2f")
         quantidade = st.number_input("Quantidade Inicial", min_value=0, step=1)
         
-        st.subheader("Imagem do Item (Cole com Ctrl+V ou envie arquivo)")
-        st.info("💡 Para colar o print: clique dentro da caixa de envio abaixo e aperte Ctrl+V.")
+        st.subheader("Imagem do Item")
+        st.info("💡 Dica: Tire o print da imagem, clique dentro da caixa tracejada abaixo e aperte **Ctrl+V**, ou arraste a imagem para dentro dela.")
         
-        imagem_arquivo = st.file_uploader("Enviar imagem do computador ou colar", type=["png", "jpg", "jpeg"])
+        imagem_arquivo = st.file_uploader("Arraste a imagem ou clique para selecionar", type=["png", "jpg", "jpeg"])
         
         caminho_salvo = None
         if imagem_arquivo is not None:
@@ -201,7 +200,6 @@ if check_password():
             with st.form("form_edicao"):
                 novo_nome = st.text_input("Nome", value=item_atual['Nome'])
                 
-                # Categoria na edição
                 cat_atual_val = item_atual['Categoria']
                 idx_cat = CATEGORIAS_PADRAO.index(cat_atual_val) if cat_atual_val in CATEGORIAS_PADRAO else len(CATEGORIAS_PADRAO)-1
                 nova_cat_escolhida = st.selectbox("Categoria", CATEGORIAS_PADRAO, index=idx_cat)
