@@ -57,7 +57,7 @@ if 'estoque' not in st.session_state:
     st.session_state['estoque'] = carregar_dados()
 
 if 'menu_selecionado' not in st.session_state:
-    st.session_state['menu_selecionado'] = "Dashboard / Início"
+    st.session_state['menu_selecionado'] = "Início"
 
 def check_password():
     def password_entered():
@@ -80,7 +80,7 @@ def check_password():
 if check_password():
     st.title("🍔 Sistema PDV & Controle de Estoque - Jurerê")
 
-    menu = ["Dashboard / Início", "PDV (Vendas / Navegação)", "Cadastrar Item", "Estoque Atual / Editar", "Movimentação"]
+    menu = ["Início", "PDV (Vendas / Navegação)", "Cadastrar Item", "Estoque Atual / Editar", "Movimentação"]
     
     if 'menu_selecionado' not in st.session_state or st.session_state['menu_selecionado'] not in menu:
         st.session_state['menu_selecionado'] = menu[0]
@@ -89,26 +89,29 @@ if check_password():
     if escolha != st.session_state['menu_selecionado']:
         st.session_state['menu_selecionado'] = escolha
 
-    # 0. DASHBOARD / INÍCIO (TELA DE NAVEGAÇÃO EM GALERIA/ÍCONES)
-    if st.session_state['menu_selecionado'] == "Dashboard / Início":
-        st.header("🏠 Dashboard Inicial - Jurerê")
+    # 0. INÍCIO (TELA DE NAVEGAÇÃO EM GALERIA/ÍCONES)
+    if st.session_state['menu_selecionado'] == "Início":
+        st.header("🏠 Início")
         st.markdown("Selecione abaixo para onde deseja navegar:")
         
         st.markdown("""
         <style>
-        .dash-card {
+        div.stButton > button {
             background-color: #ffffff;
             border: 1px solid #e0e0e0;
             border-radius: 10px;
-            padding: 25px;
+            padding: 30px 20px;
             text-align: center;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             transition: 0.3s;
-            margin-bottom: 20px;
+            width: 100%;
+            color: #31333F;
         }
-        .dash-card:hover {
-            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
-            border-color: #ccc;
+        div.stButton > button:hover {
+            box-shadow: 0 6px 12px rgba(0,0,0,0.12);
+            border-color: #2b6cb0;
+            background-color: #fafafa;
+            color: #2b6cb0;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -116,48 +119,24 @@ if check_password():
         col_d1, col_d2 = st.columns(2)
         
         with col_d1:
-            st.markdown("""
-            <div class="dash-card">
-                <h2>🛒</h2>
-                <h3>PDV / Vendas</h3>
-                <p style="color: #666; font-size: 14px;">Realizar vendas, visualizar produtos por categoria em formato de galeria.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            if st.button("Acessar PDV", key="btn_dash_pdv", use_container_width=True):
+            if st.button("🛒\n\n### PDV / Vendas\nRealizar vendas, visualizar produtos por categoria em formato de galeria.", key="btn_dash_pdv", use_container_width=True):
                 st.session_state['menu_selecionado'] = "PDV (Vendas / Navegação)"
                 st.rerun()
 
-            st.markdown("""
-            <div class="dash-card" style="margin-top: 20px;">
-                <h2>📦</h2>
-                <h3>Estoque Atual / Editar</h3>
-                <p style="color: #666; font-size: 14px;">Consultar tabela de estoque, conferir itens e editar preços ou quantidades.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            if st.button("Acessar Estoque / Editar", key="btn_dash_estoque", use_container_width=True):
+            st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+
+            if st.button("📦\n\n### Estoque Atual / Editar\nConsultar tabela de estoque, conferir itens e editar preços ou quantidades.", key="btn_dash_estoque", use_container_width=True):
                 st.session_state['menu_selecionado'] = "Estoque Atual / Editar"
                 st.rerun()
 
         with col_d2:
-            st.markdown("""
-            <div class="dash-card">
-                <h2>✨</h2>
-                <h3>Cadastrar Novo Item</h3>
-                <p style="color: #666; font-size: 14px;">Adicionar novos produtos com foto, nome, categorias e preços obrigatórios.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            if st.button("Acessar Cadastro", key="btn_dash_cadastrar", use_container_width=True):
+            if st.button("✨\n\n### Cadastrar Novo Item\nAdicionar novos produtos com foto, nome, categorias e preços obrigatórios.", key="btn_dash_cadastrar", use_container_width=True):
                 st.session_state['menu_selecionado'] = "Cadastrar Item"
                 st.rerun()
 
-            st.markdown("""
-            <div class="dash-card" style="margin-top: 20px;">
-                <h2>🔄</h2>
-                <h3>Movimentação</h3>
-                <p style="color: #666; font-size: 14px;">Entradas e baixas manuais rápidas no estoque.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            if st.button("Acessar Movimentação", key="btn_dash_mov", use_container_width=True):
+            st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+
+            if st.button("🔄\n\n### Movimentação\nEntradas e baixas manuais rápidas no estoque.", key="btn_dash_mov", use_container_width=True):
                 st.session_state['menu_selecionado'] = "Movimentação"
                 st.rerun()
 
@@ -167,7 +146,7 @@ if check_password():
         df = st.session_state['estoque']
         
         if df.empty:
-            st.info("Nenhum item cadastrado no estoque ainda. Cadastre itens no menu lateral ou dashboard.")
+            st.info("Nenhum item cadastrado no estoque ainda. Cadastre itens no menu lateral ou início.")
         else:
             categorias_disponiveis = sorted(df['Categoria'].dropna().unique().tolist())
             if not categorias_disponiveis:
@@ -320,9 +299,8 @@ if check_password():
                     st.session_state['estoque'] = pd.concat([df_atual, novo_dado], ignore_index=True)
                     salvar_dados(st.session_state['estoque'])
                     
-                    # Redireciona para o Dashboard Inicial após salvar com sucesso
-                    st.session_state['menu_selecionado'] = "Dashboard / Início"
-                    st.success(f"🎉 Item '{nome}' cadastrado com sucesso! Redirecionando para o Dashboard...")
+                    st.session_state['menu_selecionado'] = "Início"
+                    st.success(f"🎉 Item '{nome}' cadastrado com sucesso! Redirecionando para o Início...")
                     st.rerun()
                 else:
                     st.warning("⚠️ Preencha todos os campos obrigatórios: **Nome**, **Categoria**, **Preço de Custo** e **Preço de Venda** (maiores que zero).")
