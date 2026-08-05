@@ -18,24 +18,7 @@ def get_base64_of_bin_file(bin_file):
 
 logo_base64 = get_base64_of_bin_file(ARQUIVO_LOGO)
 
-background_css = ""
-if logo_base64:
-    background_css = f"""
-    background-image: linear-gradient(rgba(245, 247, 248, 0.92), rgba(245, 247, 248, 0.92)), url("data:image/png;base64,{logo_base64}");
-    background-repeat: no-repeat;
-    background-position: center;
-    background-attachment: fixed;
-    background-size: 40% auto;
-    """
-
-st.markdown(f"""
-    <style>
-    .stApp {{
-        background-color: #F5F7F8;
-        {background_css}
-    }}
-    </style>
-    """, unsafe_allow_html=True)
+# Background removido conforme solicitado
 
 ARQUIVO_ESTOQUE = "estoque.csv"
 
@@ -87,6 +70,10 @@ def processar_e_salvar_imagem(imagem_upload, nome_arquivo_destino):
 if 'estoque' not in st.session_state:
     st.session_state['estoque'] = carregar_dados()
 
+# Inicializa o menu selecionado se não existir
+if 'menu_selecionado' not in st.session_state:
+    st.session_state['menu_selecionado'] = "PDV (Vendas / Navegação)"
+
 def check_password():
     def password_entered():
         if st.session_state["password"] == "1234":
@@ -109,7 +96,13 @@ if check_password():
     st.title("🍔 Sistema PDV & Controle de Estoque - Jurerê")
 
     menu = ["PDV (Vendas / Navegação)", "Cadastrar Item", "Estoque Atual / Editar", "Movimentação"]
-    escolha = st.sidebar.selectbox("Menu", menu)
+    
+    # Sincroniza o selectbox com o session_state para permitir navegação programática
+    if st.session_state['menu_selecionado'] not in menu:
+        st.session_state['menu_selecionado'] = menu[0]
+        
+    escolha = st.sidebar.selectbox("Menu", menu, index=menu.index(st.session_state['menu_selecionado']), key="menu_selectbox_widget")
+    st.session_state['menu_selecionado'] = escolha
 
     # 1. PDV (PONTO DE VENDA POR CATEGORIAS)
     if escolha == "PDV (Vendas / Navegação)":
@@ -169,20 +162,21 @@ if check_password():
             with col1:
                 nome = st.text_input("Nome do Item *", placeholder="Ex: Heineken 600ml")
                 
-                cat_escolhida = st.selectbox("Categoria (Padronizada) *", CATEGORIAS_PADRAO)
+                # Categoria em branco por padrão (index=None) exigindo seleção
+                cat_escolhida = st.selectbox("Categoria (Obrigatório) *", CATEGORIAS_PADRAO, index=None, placeholder="Selecione uma categoria...")
                 if cat_escolhida == "Outros":
                     categoria = st.text_input("Especifique a nova categoria *")
                 else:
                     categoria = cat_escolhida
                 
-                preco_custo = st.number_input("Preço de Custo (R$)", min_value=0.0, format="%.2f", value=0.0)
-                preco_venda = st.number_input("Preço de Venda (R$) *", min_value=0.0, format="%.2f", value=0.0)
+                preco_custo = st.number_input("Preço de Custo (R$) *", min_value=0.0, format="%.2f", value=0.0)
 
             with col2:
+                preco_venda = st.number_input("Preço de Venda (R$) *", min_value=0.0, format="%.2f", value=0.0)
                 quantidade_inicial = st.number_input("Quantidade Inicial", min_value=0, step=1, value=0)
                 quantidade_minima = st.number_input("Quantidade Mínima (Alerta)", min_value=0, step=1, value=5)
-                
-                descricao = st.text_area("Descrição do Produto", placeholder="Detalhes, ingredientes ou observações...", height=108)
+
+            descricao = st.text_area("Descrição do Produto", placeholder="Detalhes, ingredientes ou observações...", height=100)
 
             # Cálculo visual de margem em tempo real dentro do form
             if preco_venda > 0 and preco_custo > 0:
@@ -190,8 +184,6 @@ if check_password():
                 margem_pct = (lucro_rs / preco_venda) * 100
                 markup_pct = (lucro_rs / preco_custo) * 100
                 st.info(f"📊 **Análise de Margem:** Lucro de **R$ {lucro_rs:.2f}** por unidade | Margem de Lucro: **{margem_pct:.1f}%** (Markup: {markup_pct:.1f}%)")
-            elif preco_venda > 0 and preco_custo == 0:
-                st.info("📊 **Análise de Margem:** Preço de custo zerado (100% de margem calculada sobre a venda).")
 
             st.markdown("---")
             st.subheader("🖼️ Foto do Produto")
@@ -201,7 +193,9 @@ if check_password():
             submitted = st.form_submit_button("💾 Salvar Novo Item no Estoque", use_container_width=True)
 
             if submitted:
-                if nome and categoria and preco_venda > 0:
+                # Validação dos campos obrigatórios: Nome, Categoria, Custo e Venda
+                categoria_valida = categoria is not None and str(categoria).strip() != ""
+                if nome and categoria_valida and preco_custo > 0 and preco_venda > 0:
                     caminho_salvo = None
                     if imagem_arquivo is not None:
                         nome_limpo = "".join(c for c in nome if c.isalnum() or c in (' ', '_', '-')).strip().replace(' ', '_')
@@ -227,9 +221,13 @@ if check_password():
                     
                     st.session_state['estoque'] = pd.concat([df_atual, novo_dado], ignore_index=True)
                     salvar_dados(st.session_state['estoque'])
-                    st.success(f"🎉 Item '{nome}' cadastrado com sucesso!")
+                    
+                    # Redireciona para a tela de Estoque Atual / Editar
+                    st.session_state['menu_selecionado'] = "Estoque Atual / Editar"
+                    st.success(f"🎉 Item '{nome}' cadastrado com sucesso! Redirecionando...")
+                    st.rerun()
                 else:
-                    st.warning("⚠️ Preencha os campos obrigatórios: Nome, Categoria e Preço de Venda maior que zero.")
+                    st.warning("⚠️ Preencha todos os campos obrigatórios: **Nome**, **Categoria**, **Preço de Custo** e **Preço de Venda** (maiores que zero).")
 
     # 3. ESTOQUE ATUAL E TELA DE EDIÇÃO
     elif escolha == "Estoque Atual / Editar":
