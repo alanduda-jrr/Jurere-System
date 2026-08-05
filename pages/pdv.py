@@ -1,158 +1,183 @@
 import os
 import pandas as pd
 import streamlit as st
+from PIL import Image
 
-st.set_page_config(page_title="PDV - Vendas e Comandas", page_icon="🛒", layout="wide")
+st.set_page_config(page_title="PDV - Frente de Caixa e Comandas", page_icon="🛒", layout="wide")
 
-# Proteção de acesso
+st.markdown("""
+<style>
+    [data-testid="stVerticalBlock"] [data-testid="stVerticalBlock"] {
+        gap: 0.2rem !important;
+    }
+    div[data-testid="stContainer"] {
+        padding-top: 5px !important;
+        padding-bottom: 5px !important;
+    }
+    .card-img-box {
+        width: 100%;
+        height: 110px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 0px !important;
+        margin-bottom: 0px !important;
+    }
+    .card-img-box img {
+        max-height: 110px !important;
+        max-width: 100% !important;
+        width: auto !important;
+        object-fit: contain !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 if "autenticado" not in st.session_state or not st.session_state["autenticado"]:
-  st.warning("⚠️ Você precisa fazer o login na página inicial (App) para acessar o sistema.")
+  st.warning("⚠️ Você precisa fazer o login na página inicial para acessar o sistema.")
   st.stop()
 
-# Barra lateral
-st.sidebar.title(f"Usuário: {st.session_state.get('usuario', 'Convidado')}")
-st.sidebar.markdown(f"Perfil: *{st.session_state.get('perfil', '')}*")
-st.sidebar.divider()
-if st.sidebar.button("Sair (Logout)", use_container_width=True):
-  st.session_state["autenticado"] = False
-  st.session_state["usuario"] = ""
-  st.session_state["perfil"] = ""
-  st.rerun()
-
 ARQUIVO_ESTOQUE = "estoque.csv"
-ARQUIVO_COMANDAS = "comandas.csv"
 ARQUIVO_CAIXA = "caixa_vendas.csv"
-
 
 def carregar_estoque():
   if os.path.exists(ARQUIVO_ESTOQUE):
-    return pd.read_csv(ARQUIVO_ESTOQUE)
-  else:
-    return pd.DataFrame(columns=["ID", "Produto", "Categoria", "Preço (R$)", "Quantidade", "Imagem"])
-
+    try:
+      df = pd.read_csv(ARQUIVO_ESTOQUE)
+      colunas_padrao = ["ID", "Produto", "Categoria", "Preço de Custo (R$)", "Preço de Venda (R$)", "Margem (%)", "Quantidade", "Estoque Mínimo", "Imagem"]
+      for col in colunas_padrao:
+        if col not in df.columns:
+          df[col] = None
+      return df
+    except Exception:
+      return pd.DataFrame(columns=["ID", "Produto", "Categoria", "Preço de Custo (R$)", "Preço de Venda (R$)", "Margem (%)", "Quantidade", "Estoque Mínimo", "Imagem"])
+  return pd.DataFrame(columns=["ID", "Produto", "Categoria", "Preço de Custo (R$)", "Preço de Venda (R$)", "Margem (%)", "Quantidade", "Estoque Mínimo", "Imagem"])
 
 def salvar_estoque(df):
   df.to_csv(ARQUIVO_ESTOQUE, index=False)
 
+def registrar_venda_caixa(descricao, valor, forma_pagamento):
+  try:
+    if os.path.exists(ARQUIVO_CAIXA):
+      df_caixa = pd.read_csv(ARQUIVO_CAIXA)
+    else:
+      df_caixa = pd.DataFrame(columns=["ID_Venda", "Tipo", "Descricao", "Valor", "Forma_Pagamento", "Horario"])
+    
+    novo_id = int(df_caixa["ID_Venda"].max() + 1) if not df_caixa.empty and "ID_Venda" in df_caixa.columns and pd.notna(df_caixa["ID_Venda"].max()) else 1
+    
+    from datetime import datetime
+    novo_registro = pd.DataFrame([{
+        "ID_Venda": novo_id,
+        "Tipo": "Venda",
+        "Descricao": descricao,
+        "Valor": valor,
+        "Forma_Pagamento": forma_pagamento,
+        "Horario": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }])
+    
+    df_caixa = pd.concat([df_caixa, novo_registro], ignore_index=True)
+    df_caixa.to_csv(ARQUIVO_CAIXA, index=False)
+  except Exception as e:
+    st.error(f"Erro ao registrar caixa: {e}")
 
-def carregar_comandas():
-  if os.path.exists(ARQUIVO_COMANDAS):
-    return pd.read_csv(ARQUIVO_COMANDAS)
-  else:
-    return pd.DataFrame(columns=["ID_Comanda", "Cliente_Mesa", "Produto", "Quantidade", "Valor_Total", "Status"])
+@st.dialog("➕ Adicionar à Comanda / Venda")
+def modal_adicionar_comanda(row_id):
+  df = carregar_estoque()
+  row_data = df[df["ID"] == row_id]
+  if row_data.empty:
+    st.error("Item não encontrado.")
+    return
+  
+  row = row_data.iloc[0]
+  produto_nome = str(row['Produto'])
+  preco_venda = float(row['Preço de Venda (R$)']) if pd.notna(row['Preço de Venda (R$)']) else 0.0
+  estoque_atual = int(row['Quantidade']) if pd.notna(row['Quantidade']) else 0
 
+  st.markdown(f"**Produto:** {produto_nome}")
+  st.markdown(f"💰 **Preço Unitário:** R$ {preco_venda:.2f}")
+  st.markdown(f"📦 **Disponível em Estoque:** {estoque_atual} un.")
 
-def salvar_comandas(df):
-  df.to_csv(ARQUIVO_COMANDAS, index=False)
+  with st.form(key=f"form_comanda_{row_id}"):
+    qtd_comprar = st.number_input("Quantidade", min_value=1, max_value=max(1, estoque_atual), value=1, step=1)
+    forma_pgto = st.selectbox("Forma de Pagamento", ["Dinheiro", "Pix", "Cartão de Crédito", "Cartão de Débito"])
+    
+    confirmar = st.form_submit_button("🛒 Confirmar Lançamento", use_container_width=True)
 
+    if confirmar:
+      if estoque_atual < qtd_comprar:
+        st.error("❌ Quantidade superior ao estoque disponível!")
+      else:
+        # Dá baixa no estoque
+        idx_linha = df[df["ID"] == row_id].index[0]
+        df.loc[idx_linha, "Quantidade"] = estoque_atual - qtd_comprar
+        salvar_estoque(df)
 
-def carregar_caixa():
-  if os.path.exists(ARQUIVO_CAIXA):
-    return pd.read_csv(ARQUIVO_CAIXA)
-  else:
-    return pd.DataFrame(columns=["ID_Venda", "Tipo", "Descricao", "Valor", "Forma_Pagamento", "Horario"])
+        # Registra no caixa
+        valor_total = preco_venda * qtd_comprar
+        descricao_venda = f"{qtd_comprar}x {produto_nome}"
+        registrar_venda_caixa(descricao_venda, valor_total, forma_pgto)
 
-
-def salvar_caixa(df):
-  df.to_csv(ARQUIVO_CAIXA, index=False)
-
-
-df_estoque = carregar_estoque()
-df_comandas = carregar_comandas()
-df_caixa = carregar_caixa()
+        st.session_state["msg_pdv"] = f"✅ {descricao_venda} lançado com sucesso!"
+        st.rerun()
 
 st.title("🛒 PDV - Frente de Caixa e Comandas")
-st.markdown("Realize vendas diretas no balcão ou lance itens em comandas abertas por mesa/cliente.")
+st.markdown("Realize vendas diretas no balcão ou lance itens em comandas abertas.")
 
-if df_estoque.empty:
-  st.info("Nenhum produto cadastrado no estoque. Cadastre itens na página de Estoque primeiro.")
+if "msg_pdv" in st.session_state:
+  st.success(st.session_state["msg_pdv"])
+  del st.session_state["msg_pdv"]
+
+df_estoque = carregar_estoque()
+
+if df_estoque.empty or df_estoque["Produto"].dropna().empty:
+  st.info("Nenhum produto cadastrado no estoque.")
 else:
-  # Filtro por categoria
-  categorias = ["Todas"] + list(df_estoque["Categoria"].dropna().unique())
-  cat_selecionada = st.selectbox("Filtrar por Categoria", categorias)
+  # Filtra apenas itens com estoque maior que 0
+  df_estoque["Quantidade"] = pd.to_numeric(df_estoque["Quantidade"], errors="fillna").fillna(0)
+  df_disponivel = df_estoque[df_estoque["Quantidade"] > 0].copy()
 
-  if cat_selecionada != "Todas":
-    df_filtrado = df_estoque[df_estoque["Categoria"] == cat_selecionada]
-  else:
-    df_filtrado = df_estoque
+  col_f1, col_f2 = st.columns([2, 1])
+  with col_f1:
+    termo_busca = st.text_input("🔍 Pesquisa:", placeholder="Filtrar produto...", label_visibility="collapsed")
+  with col_f2:
+    categorias_disponiveis = ["Todas"] + list(df_disponivel["Categoria"].dropna().unique())
+    cat_filtro = st.selectbox("Categoria", categorias_disponiveis, label_visibility="collapsed")
+
+  if termo_busca:
+    df_disponivel = df_disponivel[df_disponivel["Produto"].str.contains(termo_busca, case=False, na=False)]
+  if cat_filtro != "Todas":
+    df_disponivel = df_disponivel[df_disponivel["Categoria"] == cat_filtro]
 
   st.divider()
 
-  # Exibição dos produtos estilo catálogo
-  cols = st.columns(3)
-  for idx, row in df_filtrado.reset_index().iterrows():
-    with cols[idx % 3]:
-      st.markdown(f"### {row['Produto']}")
-      st.markdown(f"**Categoria:** {row['Categoria']}")
-      st.markdown(f"**Preço:** R$ {row['Preço (R$)']:.2f}")
-      st.markdown(f"**Disponível:** {row['Quantidade']} un.")
-
-      # Opções de ação para o produto
-      modo_venda = st.radio(
-          "Destino da Venda:",
-          ["Venda Balcão (Direta)", "Lançar em Comanda (Mesa)"],
-          key=f"modo_{row['ID']}"
-      )
-
-      if modo_venda == "Lançar em Comanda (Mesa)":
-        cliente_mesa = st.text_input("Nome do Cliente ou Mesa", key=f"cli_{row['ID']}")
-        qtd_lancada = st.number_input("Qtd", min_value=1, max_value=int(row["Quantidade"]) if row["Quantidade"] > 0 else 1, value=1, key=f"qtd_{row['ID']}")
-
-        if st.button(f"Lançar na Comanda", key=f"btn_comanda_{row['ID']}"):
-          if not cliente_mesa:
-            st.error("Informe o nome do cliente ou número da mesa.")
-          elif row["Quantidade"] < qtd_lancada:
-            st.error("Quantidade indisponível em estoque!")
+  if df_disponivel.empty:
+    st.info("Nenhum produto disponível em estoque com os filtros selecionados.")
+  else:
+    cols = st.columns(5)
+    for idx, row in df_disponivel.reset_index().iterrows():
+      with cols[idx % 5]:
+        with st.container(border=True):
+          caminho_img = str(row["Imagem"])
+          if caminho_img and caminho_img != "nan" and os.path.exists(caminho_img):
+            st.markdown(f"<div class='card-img-box'>", unsafe_allow_html=True)
+            st.image(caminho_img, use_container_width=False)
+            st.markdown("</div>", unsafe_allow_html=True)
           else:
-            # Baixa no estoque
-            indice_original = df_estoque[df_estoque["ID"] == row["ID"]].index[0]
-            df_estoque.at[indice_original, "Quantidade"] -= qtd_lancada
-            salvar_estoque(df_estoque)
+            st.markdown("<div class='card-img-box' style='color: gray; font-size: 11px;'>Sem foto</div>", unsafe_allow_html=True)
 
-            # Adiciona na comanda aberta
-            novo_id_comanda = int(df_comandas["ID_Comanda"].max() + 1) if not df_comandas.empty and "ID_Comanda" in df_comandas.columns else 1
-            valor_total_item = row["Preço (R$)"] * qtd_lancada
+          produto_nome = str(row['Produto'])
+          venda = float(row['Preço de Venda (R$)']) if pd.notna(row['Preço de Venda (R$)']) else 0.0
+          qtd = int(row['Quantidade'])
 
-            nova_comanda = pd.DataFrame([{
-                "ID_Comanda": novo_id_comanda,
-                "Cliente_Mesa": cliente_mesa,
-                "Produto": row["Produto"],
-                "Quantidade": qtd_lancada,
-                "Valor_Total": valor_total_item,
-                "Status": "Aberta"
-            }])
-
-            df_comandas = pd.concat([df_comandas, nova_comanda], ignore_index=True)
-            salvar_comandas(df_comandas)
-
-            st.success(f"Item lançado na comanda de '{cliente_mesa}' com sucesso!")
-            st.rerun()
-
-      else:
-        # Venda direta de balcão imediata
-        if st.button(f"Concluir Venda Balcão", key=f"btn_balcao_{row['ID']}"):
-          if row["Quantidade"] > 0:
-            indice_original = df_estoque[df_estoque["ID"] == row["ID"]].index[0]
-            df_estoque.at[indice_original, "Quantidade"] -= 1
-            salvar_estoque(df_estoque)
-
-            # Registra no caixa imediatamente
-            novo_id_venda = int(df_caixa["ID_Venda"].max() + 1) if not df_caixa.empty and "ID_Venda" in df_caixa.columns else 1
-            nova_venda_caixa = pd.DataFrame([{
-                "ID_Venda": novo_id_venda,
-                "Tipo": "Balcão (Direto)",
-                "Descricao": f"1x {row['Produto']}",
-                "Valor": row["Preço (R$)"],
-                "Forma_Pagamento": "Dinheiro/Pix (Balcão)",
-                "Horario": pd.Timestamp.now().strftime("%d/%m/%Y %H:%M:%S")
-            }])
-
-            df_caixa = pd.concat([df_caixa, nova_venda_caixa], ignore_index=True)
-            salvar_caixa(df_caixa)
-
-            st.success(f"Venda de '{row['Produto']}' realizada e registrada no caixa!")
-            st.rerun()
-          else:
-            st.error("Produto esgotado no estoque!")
-
-      st.markdown("---")
+          card_html = f"""
+          <div style="font-size: 11px; line-height: 1.3; margin-bottom: 2px; text-align: center;">
+            <b style="font-size: 12px; display: block; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333;" title="{produto_nome}">{produto_nome}</b>
+            <div style="background-color: #d4edda; color: #28a745; padding: 3px 6px; border-radius: 4px; margin-bottom: 6px; font-weight: bold;">📦 Estoque: {qtd} un.</div>
+            <div style="border-top: 1px solid #eee; padding-top: 4px; color: #333; font-size: 12px;">
+              <div>Venda: <b>R$ {venda:.2f}</b></div>
+            </div>
+          </div>
+          """
+          st.markdown(card_html, unsafe_allow_html=True)
+          
+          if st.button("➕ Adicionar", key=f"btn_add_{row['ID']}", use_container_width=True, type="primary"):
+            modal_adicionar_comanda(row['ID'])
