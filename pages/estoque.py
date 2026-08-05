@@ -22,6 +22,18 @@ ARQUIVO_ESTOQUE = "estoque.csv"
 ARQUIVO_CAIXA = "caixa_vendas.csv"
 PASTA_IMAGENS = "imagens_produtos"
 
+LISTA_CATEGORIAS = [
+    "Agua",
+    "Refrigerantes",
+    "Cervejas",
+    "Drinks",
+    "Isotonicos e Eneréticos",
+    "Porções",
+    "Assados e Fritos",
+    "Sobremesas",
+    "Snacks/Aperitivos"
+]
+
 def carregar_estoque():
   if os.path.exists(ARQUIVO_ESTOQUE):
     df = pd.read_csv(ARQUIVO_ESTOQUE)
@@ -60,9 +72,9 @@ df_estoque = carregar_estoque()
 df_caixa = carregar_vendas()
 
 st.title("📦 Gerenciamento de Estoque")
-st.markdown("Realizar o cadastro de novos produtos ou editar um existente.")
+st.markdown("Catálogo compacto em grade de 5 colunas com novas categorias.")
 
-aba1, aba2 = st.tabs(["➕ Cadastrar Novo Item", "🖼️ Consultar Estoque"])
+aba1, aba2 = st.tabs(["➕ Cadastrar Novo Item", "🖼️ Mini Galeria de Estoque"])
 
 with aba1:
   st.subheader("Cadastro de Produto")
@@ -71,7 +83,7 @@ with aba1:
 
     with col1:
       nome_produto = st.text_input("Nome do Produto *")
-      categoria = st.selectbox("Categoria *", ["Bebidas", "Porções", "Pratos Principais", "Sobremesas", "Insumos", "Outros"])
+      categoria = st.selectbox("Categoria *", LISTA_CATEGORIAS)
       preco_custo = st.number_input("Preço de Custo (R$) *", min_value=0.0, format="%.2f")
       preco_venda = st.number_input("Preço de Venda (R$) *", min_value=0.0, format="%.2f")
 
@@ -177,9 +189,8 @@ with aba2:
             with st.form(key=f"form_alt_{row['ID']}"):
               novo_nome = st.text_input("Nome", value=produto_nome)
               
-              lista_cats = ["Bebidas", "Porções", "Pratos Principais", "Sobremesas", "Insumos", "Outros"]
-              cat_index = lista_cats.index(cat_atual) if cat_atual in lista_cats else 0
-              nova_cat = st.selectbox("Categoria", lista_cats, index=cat_index)
+              cat_index = LISTA_CATEGORIAS.index(cat_atual) if cat_atual in LISTA_CATEGORIAS else 0
+              nova_cat = st.selectbox("Categoria", LISTA_CATEGORIAS, index=cat_index)
 
               novo_custo = st.number_input("Preço Custo", value=float(custo), min_value=0.0, format="%.2f")
               novo_venda = st.number_input("Preço Venda", value=float(venda), min_value=0.0, format="%.2f")
