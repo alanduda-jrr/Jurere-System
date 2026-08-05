@@ -5,6 +5,25 @@ from PIL import Image
 
 st.set_page_config(page_title="Gerenciamento de Estoque", page_icon="📦", layout="wide")
 
+# CSS para padronizar perfeitamente a altura das imagens e dos cards na galeria
+st.markdown("""
+<style>
+    .card-img-container {
+        height: 140px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 8px;
+        overflow: hidden;
+    }
+    .card-img-container img {
+        max-height: 140px !important;
+        width: auto !important;
+        object-fit: contain;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 if "autenticado" not in st.session_state or not st.session_state["autenticado"]:
   st.warning("⚠️ Você precisa fazer o login na página inicial (App) para acessar o sistema.")
   st.stop()
@@ -232,10 +251,14 @@ else:
         with cols[idx % 5]:
           with st.container(border=True):
             caminho_img = str(row["Imagem"])
+            
+            # Imagem encapsulada em uma div com tamanho fixo padronizado pelo CSS
             if caminho_img and caminho_img != "nan" and os.path.exists(caminho_img):
-              st.image(caminho_img, use_container_width=True)
+              st.markdown(f"<div class='card-img-container'>", unsafe_allow_html=True)
+              st.image(caminho_img, use_container_width=False)
+              st.markdown("</div>", unsafe_allow_html=True)
             else:
-              st.markdown("<div style='text-align: center; color: gray; font-size: 11px; padding: 15px 0;'>Sem foto</div>", unsafe_allow_html=True)
+              st.markdown("<div class='card-img-container' style='color: gray; font-size: 11px;'>Sem foto</div>", unsafe_allow_html=True)
 
             produto_nome = str(row['Produto'])
             custo = float(row['Preço de Custo (R$)']) if pd.notna(row['Preço de Custo (R$)']) else 0.0
