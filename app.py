@@ -1,13 +1,13 @@
 import streamlit as st
 
-# Configuração da página (deve ser o primeiro comando Streamlit)
+# Configuração da página
 st.set_page_config(
     page_title="Sistema Jurerê",
     page_icon="🔐",
     layout="wide"
 )
 
-# Inicializa as variáveis de controle de sessão para o login
+# Inicializa as variáveis de controle de sessão
 if 'autenticado' not in st.session_state:
     st.session_state['autenticado'] = False
 if 'usuario' not in st.session_state:
@@ -15,7 +15,7 @@ if 'usuario' not in st.session_state:
 if 'perfil' not in st.session_state:
     st.session_state['perfil'] = ""
 
-# Base simples de usuários simulada (pode ser substituída por um banco de dados futuramente)
+# Base simples de usuários simulada
 USUARIOS = {
     "admin": {"senha": "123", "perfil": "Administrador", "nome": "Administrador do Sistema"},
     "operador": {"senha": "123", "perfil": "Operador", "nome": "Funcionário Balcão"}
@@ -44,10 +44,19 @@ def tela_login():
                     st.error("Usuário ou senha incorretos.")
 
 def painel_principal():
-    # Barra lateral de navegação e controle de sessão
+    # Barra lateral com menu de navegação explícito
     st.sidebar.title(f"Bem-vindo(a),")
     st.sidebar.markdown(f"**{st.session_state['usuario']}**")
     st.sidebar.markdown(f"Perfil: *{st.session_state['perfil']}*")
+    st.sidebar.divider()
+    
+    st.sidebar.markdown("### 📂 Menu do Sistema")
+    
+    # Links diretos para as páginas na pasta pages/
+    st.sidebar.page_link("app.py", label="Início / Dashboard", icon="🏠")
+    st.sidebar.page_link("pages/estoque.py", label="Gerenciar Estoque", icon="📦")
+    st.sidebar.page_link("pages/pdv.py", label="Frente de Caixa (PDV)", icon="🛒")
+    
     st.sidebar.divider()
     
     if st.sidebar.button("🚪 Sair (Logout)", use_container_width=True):
@@ -55,9 +64,6 @@ def painel_principal():
         st.session_state['usuario'] = ""
         st.session_state['perfil'] = ""
         st.rerun()
-        
-    st.sidebar.markdown("---")
-    st.sidebar.info("Utilize as páginas acima na barra lateral para navegar entre Estoque, PDV e Caixa.")
 
     # Conteúdo da Página Inicial (Home / Dashboard)
     st.title("📊 Painel Inicial - Sistema Jurerê")
@@ -75,9 +81,9 @@ def painel_principal():
     st.divider()
     st.markdown("### Atalhos Rápidos")
     st.markdown("""
-    - Vá para **Estoque** para cadastrar ou gerenciar produtos e preços.
-    - Vá para **PDV** para registrar novos pedidos e vendas de balcão/mesas.
-    - Vá para **Caixa** para conferir as comandas e o fechamento financeiro.
+    - Utilize o menu na **barra lateral à esquerda** para navegar entre as seções.
+    - Vá para **Gerenciar Estoque** para cadastrar ou gerenciar produtos e preços.
+    - Vá para **Frente de Caixa (PDV)** para registrar novas vendas.
     """)
 
 # Execução principal baseada no estado de autenticação
