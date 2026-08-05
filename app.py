@@ -1,162 +1,87 @@
-import os
-import pandas as pd
-from datetime import datetime
 import streamlit as st
 
-st.set_page_config(page_title="Sistema Jurerê", page_icon="📊", layout="wide")
+# Configuração da página (deve ser o primeiro comando Streamlit)
+st.set_page_config(
+    page_title="Sistema Jurerê",
+    page_icon="🔐",
+    layout="wide"
+)
 
-# Inicializa o estado de autenticação se não existir
-if "autenticado" not in st.session_state:
-  st.session_state["autenticado"] = False
+# Inicializa as variáveis de controle de sessão para o login
+if 'autenticado' not in st.session_state:
+    st.session_state['autenticado'] = False
+if 'usuario' not in st.session_state:
+    st.session_state['usuario'] = ""
+if 'perfil' not in st.session_state:
+    st.session_state['perfil'] = ""
 
-# Tela de Login simples caso não esteja autenticado
-if not st.session_state["autenticado"]:
-  st.title("🔐 Login do Sistema")
-  with st.form("form_login"):
-    usuario = st.text_input("Usuário")
-    senha = st.text_input("Senha", type="password")
-    submit = st.form_submit_button("Entrar")
-    if submit:
-      # Login padrão para liberar o acesso
-      if usuario and senha:
-        st.session_state["autenticado"] = True
-        st.session_state["usuario_nome"] = usuario
+# Base simples de usuários simulada (pode ser substituída por um banco de dados futuramente)
+USUARIOS = {
+    "admin": {"senha": "123", "perfil": "Administrador", "nome": "Administrador do Sistema"},
+    "operador": {"senha": "123", "perfil": "Operador", "nome": "Funcionário Balcão"}
+}
+
+def tela_login():
+    st.markdown("<h2 style='text-align: center;'>🔐 Login - Sistema Jurerê</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #666;'>Insira suas credenciais para acessar o sistema.</p>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 1, 1])
+    
+    with col2:
+        with st.form("form_login"):
+            username = st.text_input("Usuário")
+            password = st.text_input("Senha", type="password")
+            submit = st.form_submit_button("Entrar", use_container_width=True)
+            
+            if submit:
+                if username in USUARIOS and USUARIOS[username]["senha"] == password:
+                    st.session_state['autenticado'] = True
+                    st.session_state['usuario'] = USUARIOS[username]["nome"]
+                    st.session_state['perfil'] = USUARIOS[username]["perfil"]
+                    st.success("Login realizado com sucesso!")
+                    st.rerun()
+                else:
+                    st.error("Usuário ou senha incorretos.")
+
+def painel_principal():
+    # Barra lateral de navegação e controle de sessão
+    st.sidebar.title(f"Bem-vindo(a),")
+    st.sidebar.markdown(f"**{st.session_state['usuario']}**")
+    st.sidebar.markdown(f"Perfil: *{st.session_state['perfil']}*")
+    st.sidebar.divider()
+    
+    if st.sidebar.button("🚪 Sair (Logout)", use_container_width=True):
+        st.session_state['autenticado'] = False
+        st.session_state['usuario'] = ""
+        st.session_state['perfil'] = ""
         st.rerun()
-      else:
-        st.warning("Preencha usuário e senha.")
-  st.stop()
+        
+    st.sidebar.markdown("---")
+    st.sidebar.info("Utilize as páginas acima na barra lateral para navegar entre Estoque, PDV e Caixa.")
 
-# Menu lateral e estrutura principal
-st.sidebar.markdown(f"**Bem-vindo(a),**\n\n{st.session_state.get('usuario_nome', 'Administrador')}")
-st.sidebar.divider()
-st.sidebar.markdown("### 📂 Módulos do Sistema")
-modulo_selecionado = st.sidebar.selectbox("Selecione o Módulo", ["Início / Dashboard", "Caixa e Relatório de Vendas"])
-
-if st.sidebar.button("Sair (Logout)"):
-  st.session_state["autenticado"] = False
-  st.rerun()
-
-ARQUIVO_CAIXA = "caixa.csv"
-ARQUIVO_ESTOQUE = "estoque.csv"
-
-def carregar_caixa():
-  if os.path.exists(ARQUIVO_CAIXA):
-    try:
-      df = pd.read_csv(ARQUIVO_CAIXA)
-      colunas_padrao = ["ID_Venda", "Tipo", "Descricao", "Valor", "Forma_Pagamento", "Horario"]
-      for col in colunas_padrao:
-        if col not in df.columns:
-          df[col] = None
-      return df
-    except Exception:
-      return pd.DataFrame(columns=["ID_Venda", "Tipo", "Descricao", "Valor", "Forma_Pagamento", "Horario"])
-  return pd.DataFrame(columns=["ID_Venda", "Tipo", "Descricao", "Valor", "Forma_Pagamento", "Horario"])
-
-def carregar_estoque():
-  if os.path.exists(ARQUIVO_ESTOQUE):
-    try:
-      return pd.read_csv(ARQUIVO_ESTOQUE)
-    except Exception:
-      return pd.DataFrame()
-  return pd.DataFrame()
-
-# -------------------------------------------------------------
-# MÓDULO: INÍCIO / DASHBOARD
-# -------------------------------------------------------------
-if modulo_selecionado == "Início / Dashboard":
-  st.title("📊 Painel Inicial - Sistema Jurerê")
-  st.markdown("Visão geral rápida do sistema comercial.")
-
-  df_caixa = carregar_caixa()
-  df_estoque = carregar_estoque()
-
-  total_hoje = 0.0
-  qtd_vendas_hoje = 0
-
-  if not df_caixa.empty and "Horario" in df_caixa.columns:
-    df_caixa["Horario"] = pd.to_datetime(df_caixa["Horario"], errors="coerce")
-    df_caixa["Data"] = df_caixa["Horario"].dt.date
-    df_caixa["Valor"] = pd.to_numeric(df_caixa["Valor"], errors="coerce").fillna(0.0)
+    # Conteúdo da Página Inicial (Home / Dashboard)
+    st.title("📊 Painel Inicial - Sistema Jurerê")
+    st.markdown("Visão geral rápida do sistema comercial.")
     
-    hoje = datetime.now().date()
-    vendas_hoje = df_caixa[(df_caixa["Data"] == hoje) & (df_caixa["Tipo"] == "Venda")]
-    total_hoje = vendas_hoje["Valor"].sum()
-    qtd_vendas_hoje = len(vendas_hoje)
-
-  total_produtos = len(df_estoque) if not df_estoque.empty else 0
-
-  c1, c2, c3 = st.columns(3)
-  with c1:
-    st.metric("Status do Caixa", "Aberto", "Operando")
-  with c2:
-    st.metric("Produtos Cadastrados", f"{total_produtos} itens")
-  with c3:
-    st.metric("Vendas Hoje", f"R$ {total_hoje:.2f}", f"{qtd_vendas_hoje} realizadas")
-
-# -------------------------------------------------------------
-# MÓDULO: CAIXA E RELATÓRIO DE VENDAS
-# -------------------------------------------------------------
-elif modulo_selecionado == "Caixa e Relatório de Vendas":
-  st.title("💵 Caixa e Relatório de Vendas")
-  st.markdown("Gerenciamento de faturamento, vendas realizadas e fechamento de caixa.")
-
-  df_caixa = carregar_caixa()
-
-  if df_caixa.empty or df_caixa["Valor"].dropna().empty:
-    st.info("📭 Nenhuma movimentação registrada no caixa ainda. Realize vendas pelo PDV para preencher os relatórios.")
-  else:
-    df_caixa["Horario"] = pd.to_datetime(df_caixa["Horario"], errors="coerce")
-    df_caixa["Data"] = df_caixa["Horario"].dt.date
-    df_caixa["Valor"] = pd.to_numeric(df_caixa["Valor"], errors="coerce").fillna(0.0)
-
-    hoje = datetime.now().date()
+    col1, col2, col3 = st.columns(3)
     
-    col_m1, col_m2, col_m3 = st.columns(3)
-    
-    vendas_hoje = df_caixa[(df_caixa["Data"] == hoje) & (df_caixa["Tipo"] == "Venda")]
-    total_hoje = vendas_hoje["Valor"].sum()
-    qtd_vendas_hoje = len(vendas_hoje)
-
-    total_geral = df_caixa[df_caixa["Tipo"] == "Venda"]["Valor"].sum()
-
-    with col_m1:
-      st.metric("Faturamento Hoje", f"R$ {total_hoje:.2f}", f"{qtd_vendas_hoje} vendas realizadas")
-    with col_m2:
-      st.metric("Faturamento Acumulado Geral", f"R$ {total_geral:.2f}")
-    with col_m3:
-      st.metric("Status do Caixa", "Aberto", "Operando normalmente")
+    with col1:
+        st.metric(label="Status do Caixa", value="Aberto", delta="Operando")
+    with col2:
+        st.metric(label="Produtos Cadastrados", value="--", delta="Ver Estoque")
+    with col3:
+        st.metric(label="Vendas Hoje", value="R$ 0,00", delta="0 realizadas")
 
     st.divider()
+    st.markdown("### Atalhos Rápidos")
+    st.markdown("""
+    - Vá para **Estoque** para cadastrar ou gerenciar produtos e preços.
+    - Vá para **PDV** para registrar novos pedidos e vendas de balcão/mesas.
+    - Vá para **Caixa** para conferir as comandas e o fechamento financeiro.
+    """)
 
-    st.subheader("📊 Vendas por Forma de Pagamento (Hoje)")
-    if not vendas_hoje.empty:
-      resumo_pagamento = vendas_hoje.groupby("Forma_Pagamento")["Valor"].sum().reset_index()
-      resumo_pagamento.columns = ["Forma de Pagamento", "Total Arrecadado (R$)"]
-      st.dataframe(resumo_pagamento, use_container_width=True, hide_index=True)
-    else:
-      st.info("Nenhuma venda registrada hoje até o momento.")
-
-    st.divider()
-
-    st.subheader("📜 Histórico Completo de Movimentações")
-    
-    tipo_filtro = st.selectbox("Filtrar por Tipo:", ["Todos", "Venda", "Sangria/Retirada", "Suprimento"])
-    if tipo_filtro != "Todos":
-      df_exibicao = df_caixa[df_caixa["Tipo"] == tipo_filtro]
-    else:
-      df_exibicao = df_caixa
-
-    st.dataframe(
-        df_exibicao.sort_values(by="Horario", ascending=False),
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "ID_Venda": "ID",
-            "Tipo": "Tipo",
-            "Descricao": "Descrição",
-            "Valor": st.column_config.NumberColumn("Valor (R$)", format="R$ %.2f"),
-            "Forma_Pagamento": "Forma de Pagamento",
-            "Horario": "Data/Hora",
-            "Data": None
-        }
-    )
+# Execução principal baseada no estado de autenticação
+if not st.session_state['autenticado']:
+    tela_login()
+else:
+    painel_principal()
