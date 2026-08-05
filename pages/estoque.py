@@ -134,16 +134,20 @@ if "msg_sucesso" in st.session_state:
 if "aba_ativa" not in st.session_state:
   st.session_state["aba_ativa"] = "galeria"
 
-aba_selecionada = st.radio(
-    "Navegação",
-    ["➕ CADASTRAR ITEM", "📦 ESTOQUE/MOVIMENTAÇÃO"],
-    index=1 if st.session_state["aba_ativa"] == "galeria" else 0,
-    horizontal=True,
-    label_visibility="collapsed"
-)
+# Botões visuais de navegação
+col_b1, col_b2, col_vazio = st.columns([2, 2, 6])
+with col_b1:
+  if st.button("➕ CADASTRAR ITEM", use_container_width=True, type="primary" if st.session_state["aba_ativa"] == "cadastro" else "secondary"):
+    st.session_state["aba_ativa"] = "cadastro"
+    st.rerun()
+with col_b2:
+  if st.button("📦 ESTOQUE/MOVIMENTAÇÃO", use_container_width=True, type="primary" if st.session_state["aba_ativa"] == "galeria" else "secondary"):
+    st.session_state["aba_ativa"] = "galeria"
+    st.rerun()
 
-if "CADASTRAR" in aba_selecionada:
-  st.session_state["aba_ativa"] = "cadastro"
+st.divider()
+
+if st.session_state["aba_ativa"] == "cadastro":
   st.subheader("Cadastro de Produto")
   with st.form("form_cadastro_avancado", clear_on_submit=True):
     col1, col2 = st.columns(2)
@@ -193,71 +197,81 @@ if "CADASTRAR" in aba_selecionada:
         st.rerun()
 
 else:
-  st.session_state["aba_ativa"] = "galeria"
   st.subheader("Galeria Compacta")
 
   df_estoque = carregar_estoque()
   if df_estoque.empty or df_estoque["Produto"].dropna().empty:
     st.info("Nenhum produto cadastrado no momento.")
   else:
-    categorias_disponiveis = ["Todas"] + list(df_estoque["Categoria"].dropna().unique())
-    cat_filtro = st.selectbox("Filtrar por Categoria:", categorias_disponiveis)
+    # Filtros compactos lado a lado (Pesquisa inteligente + Categoria)
+    col_f1, col_f2 = st.columns([2, 1])
+    with col_f1:
+      termo_busca = st.text_input("🔍 Pesquisa inteligente:", placeholder="Digite para filtrar instantaneamente (ex: HEIN)...", label_visibility="collapsed")
+    with col_f2:
+      categorias_disponiveis = ["Todas as categorias"] + list(df_estoque["Categoria"].dropna().unique())
+      cat_filtro = st.selectbox("Categoria", categorias_disponiveis, label_visibility="collapsed")
 
-    if cat_filtro != "Todas":
-      df_galeria = df_estoque[df_estoque["Categoria"] == cat_filtro]
-    else:
-      df_galeria = df_estoque
+    # Aplicação dos filtros em tempo real
+    df_galeria = df_estoque.copy()
+    if termo_busca:
+      df_galeria = df_galeria[df_galeria["Produto"].str.contains(termo_busca, case=False, na=False)]
+    
+    if cat_filtro != "Todas as categorias":
+      df_galeria = df_galeria[df_galeria["Categoria"] == cat_filtro]
 
     st.divider()
 
-    cols = st.columns(5)
-    
-    for idx, row in df_galeria.reset_index().iterrows():
-      with cols[idx % 5]:
-        with st.container(border=True):
-          caminho_img = str(row["Imagem"])
-          if caminho_img and caminho_img != "nan" and os.path.exists(caminho_img):
-            st.image(caminho_img, use_container_width=True)
-          else:
-            st.markdown("<div style='text-align: center; color: gray; font-size: 11px; padding: 15px 0;'>Sem foto</div>", unsafe_allow_html=True)
+    if df_galeria.empty:
+      st.info("Nenhum produto encontrado com os filtros informados.")
+    else:
+      cols = st.columns(5)
+      
+      for idx, row in df_galeria.reset_index().iterrows():
+        with cols[idx % 5]:
+          with st.container(border=True):
+            caminho_img = str(row["Imagem"])
+            if caminho_img and caminho_img != "nan" and os.path.exists(caminho_img):
+              st.image(caminho_img, use_container_width=True)
+            else:
+              st.markdown("<div style='text-align: center; color: gray; font-size: 11px; padding: 15px 0;'>Sem foto</div>", unsafe_allow_html=True)
 
-          produto_nome = str(row['Produto'])
-          custo = float(row['Preço de Custo (R$)']) if pd.notna(row['Preço de Custo (R$)']) else 0.0
-          venda = float(row['Preço de Venda (R$)']) if pd.notna(row['Preço de Venda (R$)']) else 0.0
-          margem = float(row['Margem (%)']) if pd.notna(row['Margem (%)']) else 0.0
-          qtd = int(row['Quantidade']) if pd.notna(row['Quantidade']) else 0
-          min_q = int(row['Estoque Mínimo']) if pd.notna(row['Estoque Mínimo']) else 0
+            produto_nome = str(row['Produto'])
+            custo = float(row['Preço de Custo (R$)']) if pd.notna(row['Preço de Custo (R$)']) else 0.0
+            venda = float(row['Preço de Venda (R$)']) if pd.notna(row['Preço de Venda (R$)']) else 0.0
+            margem = float(row['Margem (%)']) if pd.notna(row['Margem (%)']) else 0.0
+            qtd = int(row['Quantidade']) if pd.notna(row['Quantidade']) else 0
+            min_q = int(row['Estoque Mínimo']) if pd.notna(row['Estoque Mínimo']) else 0
 
-          vendas_semana = 0
-          if not df_caixa.empty and "Descricao" in df_caixa.columns:
-            nome_prod = produto_nome.lower()
-            for _, v_row in df_caixa.iterrows():
-              if nome_prod in str(v_row["Descricao"]).lower():
-                vendas_semana += 1
+            vendas_semana = 0
+            if not df_caixa.empty and "Descricao" in df_caixa.columns:
+              nome_prod = produto_nome.lower()
+              for _, v_row in df_caixa.iterrows():
+                if nome_prod in str(v_row["Descricao"]).lower():
+                  vendas_semana += 1
 
-          cor_estoque = "#d9534f" if qtd <= min_q else "#28a745"
-          bg_estoque = "#f8d7da" if qtd <= min_q else "#d4edda"
-          alerta_txt = " (Baixo!)" if qtd <= min_q else ""
+            cor_estoque = "#d9534f" if qtd <= min_q else "#28a745"
+            bg_estoque = "#f8d7da" if qtd <= min_q else "#d4edda"
+            alerta_txt = " (Baixo!)" if qtd <= min_q else ""
 
-          card_html = f"""
-          <div style="font-size: 11px; line-height: 1.3; margin-bottom: 5px; text-align: center;">
-            <b style="font-size: 12px; display: block; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333;">{produto_nome}</b>
-            
-            <div style="background-color: {bg_estoque}; color: {cor_estoque}; padding: 3px 6px; border-radius: 4px; margin-bottom: 3px; font-weight: bold; text-align: center;">
-              📦 Estoque: {qtd} un.{alerta_txt}
+            card_html = f"""
+            <div style="font-size: 11px; line-height: 1.3; margin-bottom: 5px; text-align: center;">
+              <b style="font-size: 12px; display: block; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333;">{produto_nome}</b>
+              
+              <div style="background-color: {bg_estoque}; color: {cor_estoque}; padding: 3px 6px; border-radius: 4px; margin-bottom: 3px; font-weight: bold; text-align: center;">
+                📦 Estoque: {qtd} un.{alerta_txt}
+              </div>
+              
+              <div style="background-color: #e2f0d9; color: #276a16; padding: 3px 6px; border-radius: 4px; margin-bottom: 6px; font-weight: bold; text-align: center;">
+                📈 Vendas (7d): {vendas_semana} un.
+              </div>
+
+              <div style="border-top: 1px solid #eee; padding-top: 4px; color: #555;">
+                <div>Custo: R$ {custo:.2f} | Venda: R$ {venda:.2f}</div>
+                <div>Margem: <b>{margem:.1f}%</b></div>
+              </div>
             </div>
-            
-            <div style="background-color: #e2f0d9; color: #276a16; padding: 3px 6px; border-radius: 4px; margin-bottom: 6px; font-weight: bold; text-align: center;">
-              📈 Vendas (7d): {vendas_semana} un.
-            </div>
+            """
+            st.markdown(card_html, unsafe_allow_html=True)
 
-            <div style="border-top: 1px solid #eee; padding-top: 4px; color: #555;">
-              <div>Custo: R$ {custo:.2f} | Venda: R$ {venda:.2f}</div>
-              <div>Margem: <b>{margem:.1f}%</b></div>
-            </div>
-          </div>
-          """
-          st.markdown(card_html, unsafe_allow_html=True)
-
-          if st.button("✏️ Alterar", key=f"btn_alt_{row['ID']}", use_container_width=True):
-            modal_editar(row['ID'])
+            if st.button("✏️ Alterar", key=f"btn_alt_{row['ID']}", use_container_width=True):
+              modal_editar(row['ID'])
