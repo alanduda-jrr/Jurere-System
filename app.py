@@ -3,22 +3,8 @@ import pandas as pd
 from PIL import Image
 import io
 import os
-import base64
 
 st.set_page_config(page_title="Controle de Estoque e PDV - Jurerê", layout="wide")
-
-ARQUIVO_LOGO = "logo.png" 
-
-def get_base64_of_bin_file(bin_file):
-    if os.path.exists(bin_file):
-        with open(bin_file, 'rb') as f:
-            data = f.read()
-        return base64.b64encode(data).decode()
-    return None
-
-logo_base64 = get_base64_of_bin_file(ARQUIVO_LOGO)
-
-# Background removido conforme solicitado
 
 ARQUIVO_ESTOQUE = "estoque.csv"
 
@@ -70,7 +56,6 @@ def processar_e_salvar_imagem(imagem_upload, nome_arquivo_destino):
 if 'estoque' not in st.session_state:
     st.session_state['estoque'] = carregar_dados()
 
-# Inicializa o menu selecionado se não existir
 if 'menu_selecionado' not in st.session_state:
     st.session_state['menu_selecionado'] = "PDV (Vendas / Navegação)"
 
@@ -97,16 +82,16 @@ if check_password():
 
     menu = ["PDV (Vendas / Navegação)", "Cadastrar Item", "Estoque Atual / Editar", "Movimentação"]
     
-    # Sincroniza o selectbox com o session_state para permitir navegação programática
-    if st.session_state['menu_selecionado'] not in menu:
+    if 'menu_selecionado' not in st.session_state or st.session_state['menu_selecionado'] not in menu:
         st.session_state['menu_selecionado'] = menu[0]
-        
-    escolha = st.sidebar.selectbox("Menu", menu, index=menu.index(st.session_state['menu_selecionado']), key="menu_selectbox_widget")
-    st.session_state['menu_selecionado'] = escolha
 
-    # 1. PDV (PONTO DE VENDA POR CATEGORIAS)
-    if escolha == "PDV (Vendas / Navegação)":
-        st.header("🛒 PDV - Frente de Caixa")
+    escolha = st.sidebar.selectbox("Menu", menu, index=menu.index(st.session_state['menu_selecionado']), key="menu_selectbox_widget")
+    if escolha != st.session_state['menu_selecionado']:
+        st.session_state['menu_selecionado'] = escolha
+
+    # 1. PDV (PONTO DE VENDA - GALERIA PADRONIZADA)
+    if st.session_state['menu_selecionado'] == "PDV (Vendas / Navegação)":
+        st.header("🛒 PDV - Frente de Caixa (Galeria)")
         df = st.session_state['estoque']
         
         if df.empty:
@@ -123,36 +108,83 @@ if check_password():
             st.markdown("---")
             st.subheader(f"Itens da Categoria: {categoria_selecionada}")
             
+            # CSS para padronizar os cartões da galeria e o tamanho das caixas de imagens
+            st.markdown("""
+            <style>
+            .product-card {
+                background-color: #ffffff;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                padding: 15px;
+                text-align: center;
+                margin-bottom: 20px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+            }
+            .product-img-container {
+                width: 100%;
+                height: 160px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+                background-color: #f9f9f9;
+                border-radius: 6px;
+                margin-bottom: 10px;
+            }
+            .product-img-container img {
+                max-height: 100%;
+                max-width: 100%;
+                object-fit: contain;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+
             cols = st.columns(3)
             for index, row in itens_categoria.reset_index().iterrows():
                 with cols[index % 3]:
-                    st.markdown(f"### {row['Nome']}")
-                    
                     img_path = row['Caminho_Imagem']
+                    img_html = ""
                     if pd.notna(img_path) and os.path.exists(str(img_path)):
-                        st.image(str(img_path), width=150)
+                        import base64
+                        with open(str(img_path), "rb") as image_file:
+                            encoded_string = base64.b64encode(image_file.read()).decode()
+                        img_html = f'<div class="product-img-container"><img src="data:image/jpeg;base64,{encoded_string}"></div>'
                     else:
-                        st.write("*(Sem imagem)*")
-                    
+                        img_html = '<div class="product-img-container"><span style="color: #aaa; font-size: 13px;">Sem imagem</span></div>'
+
                     preco_venda_val = row['Custo'] if pd.notna(row['Custo']) else row.get('Preço_Custo', 0)
-                    st.write(f"**Preço:** R$ {float(preco_venda_val):.2f}")
-                    st.write(f"**Em estoque:** {int(row['Quantidade']) if pd.notna(row['Quantidade']) else 0} un.")
-                    st.write(f"*{row['Descrição'] if pd.notna(row['Descrição']) else ''}*")
+                    qtd_val = int(row['Quantidade']) if pd.notna(row['Quantidade']) else 0
+                    desc_val = row['Descrição'] if pd.notna(row['Descrição']) and str(row['Descrição']).strip() != "" else ""
+
+                    st.markdown(f"""
+                    <div class="product-card">
+                        <div>
+                            <h4 style="margin: 0 0 10px 0; color: #333; font-size: 18px;">{row['Nome']}</h4>
+                            {img_html}
+                            <p style="margin: 5px 0; font-size: 15px;"><strong>Preço:</strong> R$ {float(preco_venda_val):.2f}</p>
+                            <p style="margin: 5px 0; font-size: 14px; color: #555;"><strong>Estoque:</strong> {qtd_val} un.</p>
+                            <p style="margin: 5px 0; font-size: 13px; color: #777; font-style: italic;">{desc_val}</p>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
-                    if st.button(f"Registrar Saída / Venda", key=f"venda_{row['ID']}"):
-                        qtd_atual = int(row['Quantidade']) if pd.notna(row['Quantidade']) else 0
-                        if qtd_atual > 0:
+                    if st.button(f"Registrar Venda", key=f"venda_{row['ID']}", use_container_width=True):
+                        if qtd_val > 0:
                             idx = st.session_state['estoque'][st.session_state['estoque']['ID'] == row['ID']].index[0]
-                            st.session_state['estoque'].at[idx, 'Quantidade'] = qtd_atual - 1
+                            st.session_state['estoque'].at[idx, 'Quantidade'] = qtd_val - 1
                             salvar_dados(st.session_state['estoque'])
-                            st.success(f"Venda de '{row['Nome']}' realizada com sucesso!")
+                            st.success(f"Venda de '{row['Nome']}' realizada!")
                             st.rerun()
                         else:
                             st.error("Produto esgotado!")
-                    st.markdown("---")
+                    st.markdown("<br>", unsafe_allow_html=True)
 
     # 2. CADASTRAR ITEM
-    elif escolha == "Cadastrar Item":
+    elif st.session_state['menu_selecionado'] == "Cadastrar Item":
         st.header("✨ Cadastrar Novo Item")
         st.markdown("Preencha os campos abaixo de forma rápida utilizando a tecla **Tab**.")
 
@@ -161,8 +193,6 @@ if check_password():
 
             with col1:
                 nome = st.text_input("Nome do Item *", placeholder="Ex: Heineken 600ml")
-                
-                # Categoria em branco por padrão (index=None) exigindo seleção
                 cat_escolhida = st.selectbox("Categoria (Obrigatório) *", CATEGORIAS_PADRAO, index=None, placeholder="Selecione uma categoria...")
                 if cat_escolhida == "Outros":
                     categoria = st.text_input("Especifique a nova categoria *")
@@ -178,22 +208,19 @@ if check_password():
 
             descricao = st.text_area("Descrição do Produto", placeholder="Detalhes, ingredientes ou observações...", height=100)
 
-            # Cálculo visual de margem em tempo real dentro do form
             if preco_venda > 0 and preco_custo > 0:
                 lucro_rs = preco_venda - preco_custo
                 margem_pct = (lucro_rs / preco_venda) * 100
                 markup_pct = (lucro_rs / preco_custo) * 100
-                st.info(f"📊 **Análise de Margem:** Lucro de **R$ {lucro_rs:.2f}** por unidade | Margem de Lucro: **{margem_pct:.1f}%** (Markup: {markup_pct:.1f}%)")
+                st.info(f"📊 **Análise de Margem:** Lucro de **R$ {lucro_rs:.2f}** | Margem: **{margem_pct:.1f}%** (Markup: {markup_pct:.1f}%)")
 
             st.markdown("---")
             st.subheader("🖼️ Foto do Produto")
-            st.markdown("Envie a foto (será redimensionada e ajustada proporcionalmente de forma automática).")
             imagem_arquivo = st.file_uploader("Escolher imagem", type=["png", "jpg", "jpeg", "webp"], label_visibility="collapsed")
 
             submitted = st.form_submit_button("💾 Salvar Novo Item no Estoque", use_container_width=True)
 
             if submitted:
-                # Validação dos campos obrigatórios: Nome, Categoria, Custo e Venda
                 categoria_valida = categoria is not None and str(categoria).strip() != ""
                 if nome and categoria_valida and preco_custo > 0 and preco_venda > 0:
                     caminho_salvo = None
@@ -201,7 +228,7 @@ if check_password():
                         nome_limpo = "".join(c for c in nome if c.isalnum() or c in (' ', '_', '-')).strip().replace(' ', '_')
                         if not nome_limpo:
                             nome_limpo = "produto"
-                        nome_arquivo_final = f"{nome_limpo}.jpg"
+                        nome_arquivo_final = f"{nome_limpo}_{os.urandom(4).hex()}.jpg"
                         caminho_salvo = processar_e_salvar_imagem(imagem_arquivo, nome_arquivo_final)
 
                     df_atual = st.session_state['estoque']
@@ -213,7 +240,7 @@ if check_password():
                         'Categoria': categoria,
                         'Descrição': descricao,
                         'Preço_Custo': preco_custo,
-                        'Custo': preco_venda,  # Mantido na coluna Custo para compatibilidade com o PDV
+                        'Custo': preco_venda,
                         'Quantidade': quantidade_inicial,
                         'Qtd_Minima': quantidade_minima,
                         'Caminho_Imagem': caminho_salvo
@@ -222,7 +249,6 @@ if check_password():
                     st.session_state['estoque'] = pd.concat([df_atual, novo_dado], ignore_index=True)
                     salvar_dados(st.session_state['estoque'])
                     
-                    # Redireciona para a tela de Estoque Atual / Editar
                     st.session_state['menu_selecionado'] = "Estoque Atual / Editar"
                     st.success(f"🎉 Item '{nome}' cadastrado com sucesso! Redirecionando...")
                     st.rerun()
@@ -230,9 +256,8 @@ if check_password():
                     st.warning("⚠️ Preencha todos os campos obrigatórios: **Nome**, **Categoria**, **Preço de Custo** e **Preço de Venda** (maiores que zero).")
 
     # 3. ESTOQUE ATUAL E TELA DE EDIÇÃO
-    elif escolha == "Estoque Atual / Editar":
+    elif st.session_state['menu_selecionado'] == "Estoque Atual / Editar":
         st.header("Estoque Atual e Gerenciamento")
-        
         df = st.session_state['estoque']
         
         if df.empty:
@@ -313,7 +338,7 @@ if check_password():
                     st.rerun()
 
     # 4. MOVIMENTAÇÃO
-    elif escolha == "Movimentação":
+    elif st.session_state['menu_selecionado'] == "Movimentação":
         st.header("Movimentação de Estoque Manual (Entrada/Saída)")
         df = st.session_state['estoque']
         
