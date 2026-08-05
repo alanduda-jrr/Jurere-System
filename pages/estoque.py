@@ -24,26 +24,13 @@ PASTA_IMAGENS = "imagens_produtos"
 def carregar_estoque():
   if os.path.exists(ARQUIVO_ESTOQUE):
     df = pd.read_csv(ARQUIVO_ESTOQUE)
-    # Padroniza caso venha de versões anteriores
     colunas_padrao = ["ID", "Produto", "Categoria", "Preço de Custo (R$)", "Preço de Venda (R$)", "Margem (%)", "Quantidade", "Estoque Mínimo", "Imagem"]
     for col in colunas_padrao:
       if col not in df.columns:
         df[col] = None
     return df[colunas_padrao]
   else:
-    return pd.DataFrame(
-        columns=[
-            "ID",
-            "Produto",
-            "Categoria",
-            "Preço de Custo (R$)",
-            "Preço de Venda (R$)",
-            "Margem (%)",
-            "Quantidade",
-            "Estoque Mínimo",
-            "Imagem",
-        ]
-    )
+    return pd.DataFrame(columns=["ID", "Produto", "Categoria", "Preço de Custo (R$)", "Preço de Venda (R$)", "Margem (%)", "Quantidade", "Estoque Mínimo", "Imagem"])
 
 def salvar_estoque(df):
   df.to_csv(ARQUIVO_ESTOQUE, index=False)
@@ -65,10 +52,10 @@ def redimensionar_e_salvar_imagem(imagem_file, nome_produto):
 
 df_estoque = carregar_estoque()
 
-st.title("📦 Gerenciamento de Estoque")
-st.markdown("Cadastre, consulte e gerencie os itens do estabelecimento no novo padrão unificado.")
+st.title("📦 Gerenciamento de Estoque - Galeria")
+st.markdown("Cadastre e visualize os itens do estabelecimento em formato de galeria visual com fotos.")
 
-aba1, aba2, aba3 = st.tabs(["➕ Cadastrar Novo Item", "📋 Consultar / Estoque Atual", "🗑️ Excluir Item"])
+aba1, aba2 = st.tabs(["➕ Cadastrar Novo Item", "🖼️ Galeria de Estoque"])
 
 with aba1:
   st.subheader("Cadastro de Produto")
@@ -119,29 +106,51 @@ with aba1:
         st.rerun()
 
 with aba2:
-  st.subheader("Estoque Atual e Alertas")
-  if df_estoque.empty:
-    st.info("Nenhum produto cadastrado.")
-  else:
-    df_editado = st.data_editor(df_estoque, use_container_width=True, num_rows="dynamic", key="editor_estoque_avancado")
-    if st.button("💾 Salvar Alterações", use_container_width=True):
-      if "Preço de Custo (R$)" in df_editado.columns and "Preço de Venda (R$)" in df_editado.columns:
-        df_editado["Margem (%)"] = df_editado.apply(
-            lambda r: round(((r["Preço de Venda (R$)"] - r["Preço de Custo (R$)"]) / r["Preço de Venda (R$)"]) * 100, 2) 
-            if r["Preço de Venda (R$)"] > 0 else 0.0, axis=1
-        )
-      salvar_estoque(df_editado)
-      st.success("✅ Atualizado com sucesso!")
-      st.rerun()
+  st.subheader("Galeria de Produtos Cadastrados")
 
-with aba3:
-  st.subheader("Excluir Produto")
-  if df_estoque.empty:
-    st.info("Nenhum produto para excluir.")
+  if df_estoque.empty or df_estoque["Produto"].dropna().empty:
+    st.info("Nenhum produto cadastrado no momento.")
   else:
-    produto_para_excluir = st.selectbox("Selecione o produto:", df_estoque["Produto"].dropna().tolist())
-    if st.button("🗑️ Deletar", type="primary"):
-      df_estoque = df_estoque[df_estoque["Produto"] != produto_para_excluir]
-      salvar_estoque(df_estoque)
-      st.success("Removido com sucesso!")
-      st.rerun()
+    # Filtro por categoria para facilitar a visualização na galeria
+    categorias_disponiveis = ["Todas"] + list(df_estoque["Categoria"].dropna().unique())
+    cat_filtro = st.selectbox("Filtrar Galeria por Categoria:", categorias_disponiveis)
+
+    if cat_filtro != "Todas":
+      df_galeria = df_estoque[df_estoque["Categoria"] == cat_filtro]
+    else:
+      df_galeria = df_estoque
+
+    st.divider()
+
+    # Exibição em cards organizados em 3 colunas
+    cols = st.columns(3)
+    for idx, row in df_galeria.reset_index().iterrows():
+      with cols[idx % 3]:
+        with st.container(border=True):
+          # Exibe imagem se existir e o arquivo estiver presente
+          caminho_img = str(row["Imagem"])
+          if caminho_img and caminho_img != "nan" and os.path.exists(caminho_img):
+            st.image(caminho_img, use_container_width=True)
+          else:
+            st.info("🖼️ Sem imagem cadastrada")
+
+          st.markdown(f"### {row['Produto']}")
+          st.markdown(f"**Categoria:** {row['Categoria']}")
+          st.markdown(f"💰 **Venda:** R$ {row['Preço de Venda (R$)']:.2f} | 📉 **Custo:** R$ {row['Preço de Custo (R$)']:.2f}")
+          st.markdown(f"📊 **Margem:** {row['Margem (%)']}%")
+          
+          # Alerta visual se estoque estiver baixo
+          qtd = int(row['Quantidade']) if pd.notna(row['Quantidade']) else 0
+          min_q = int(row['Estoque Mínimo']) if pd.notna(row['Estoque Mínimo']) else 0
+          
+          if qtd <= min_q:
+            st.markdown(f"🔴 **Estoque Crítico:** {qtd} un. (Mín: {min_q})")
+          else:
+            st.markdown(f"🟢 **Disponível:** {qtd} un.")
+
+          # Botão de exclusão individual direto no card
+          if st.button("🗑️ Excluir Item", key=f"del_{row['ID']}", use_container_width=True):
+            df_estoque = df_estoque[df_estoque["ID"] != row["ID"]]
+            salvar_estoque(df_estoque)
+            st.success(f"Item removido com sucesso!")
+            st.rerun()
