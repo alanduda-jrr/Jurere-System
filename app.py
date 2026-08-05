@@ -1,6 +1,6 @@
 import streamlit as st
 
-# Configuração da página principal
+# Configuração da página
 st.set_page_config(
     page_title="Sistema Jurerê",
     page_icon="🔐",
@@ -44,10 +44,21 @@ def tela_login():
                     st.error("Usuário ou senha incorretos.")
 
 def painel_principal():
-    # Barra lateral de controle de sessão e logout
+    # Barra lateral com menu de navegação por rádio/botões limpo
     st.sidebar.title(f"Bem-vindo(a),")
     st.sidebar.markdown(f"**{st.session_state['usuario']}**")
     st.sidebar.markdown(f"Perfil: *{st.session_state['perfil']}*")
+    st.sidebar.divider()
+    
+    st.sidebar.markdown("### 📂 Menu do Sistema")
+    
+    # Seletor de páginas na barra lateral
+    pagina_selecionada = st.sidebar.radio(
+        "Navegação",
+        ["Início / Dashboard", "Gerenciar Estoque", "Frente de Caixa (PDV)"],
+        label_visibility="collapsed"
+    )
+    
     st.sidebar.divider()
     
     if st.sidebar.button("🚪 Sair (Logout)", use_container_width=True):
@@ -56,26 +67,46 @@ def painel_principal():
         st.session_state['perfil'] = ""
         st.rerun()
 
-    # Conteúdo da Página Inicial (Home / Dashboard)
-    st.title("📊 Painel Inicial - Sistema Jurerê")
-    st.markdown("Visão geral rápida do sistema comercial.")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric(label="Status do Caixa", value="Aberto", delta="Operando")
-    with col2:
-        st.metric(label="Produtos Cadastrados", value="--", delta="Ver Estoque")
-    with col3:
-        st.metric(label="Vendas Hoje", value="R$ 0,00", delta="0 realizadas")
+    # Redirecionamento limpo para os códigos das páginas na pasta pages/
+    if pagina_selecionada == "Início / Dashboard":
+        st.title("📊 Painel Inicial - Sistema Jurerê")
+        st.markdown("Visão geral rápida do sistema comercial.")
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric(label="Status do Caixa", value="Aberto", delta="Operando")
+        with col2:
+            st.metric(label="Produtos Cadastrados", value="--", delta="Ver Estoque")
+        with col3:
+            st.metric(label="Vendas Hoje", value="R$ 0,00", delta="0 realizadas")
 
-    st.divider()
-    st.markdown("### Atalhos Rápidos")
-    st.markdown("""
-    - Utilize o menu de navegação na **barra lateral à esquerda** para acessar o **Estoque** e o **PDV**.
-    """)
+        st.divider()
+        st.markdown("### Atalhos Rápidos")
+        st.markdown("""
+        - Utilize o menu na **barra lateral à esquerda** para navegar entre as seções.
+        """)
+        
+    elif pagina_selecionada == "Gerenciar Estoque":
+        # Importa e executa o código da página de estoque diretamente
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("estoque", "pages/estoque.py")
+        estoque_module = importlib.util.module_from_spec(spec)
+        # Executa o script da página de estoque na mesma sessão
+        try:
+            spec.loader.exec_module(estoque_module)
+        except Exception as e:
+            st.error(f"Erro ao carregar a página de estoque: {e}")
+            
+    elif pagina_selecionada == "Frente de Caixa (PDV)":
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("pdv", "pages/pdv.py")
+        pdv_module = importlib.util.module_from_spec(spec)
+        try:
+            spec.loader.exec_module(pdv_module)
+        except Exception as e:
+            st.error(f"Erro ao carregar a página do PDV: {e}")
 
-# Se não estiver autenticado, exibe a tela de login. Caso contrário, exibe o painel.
+# Execução principal baseada no estado de autenticação
 if not st.session_state['autenticado']:
     tela_login()
 else:
