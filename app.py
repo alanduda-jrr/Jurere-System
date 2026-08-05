@@ -96,9 +96,14 @@ if check_password():
             background-color: #ffffff;
             border: 1px solid #e0e0e0;
             border-radius: 12px;
-            padding: 24px;
+            padding: 20px;
             text-align: center;
             box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+            height: 190px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
             margin-bottom: 15px;
         }
         </style>
@@ -109,9 +114,9 @@ if check_password():
         with col1:
             st.markdown("""
             <div class="card-container">
-                <div style="font-size: 36px; margin-bottom: 10px;">🛒</div>
-                <h3 style="margin: 0 0 8px 0; color: #1f1f1f; font-size: 20px;">PDV (Vendas)</h3>
-                <p style="color: #666; font-size: 14px; margin-bottom: 0px;">Realizar vendas e visualizar produtos por categoria.</p>
+                <div style="font-size: 32px; margin-bottom: 8px;">🛒</div>
+                <h3 style="margin: 0 0 6px 0; color: #1f1f1f; font-size: 18px;">PDV (Vendas)</h3>
+                <p style="color: #666; font-size: 13px; margin: 0; line-height: 1.4;">Realizar vendas e visualizar produtos por categoria.</p>
             </div>
             """, unsafe_allow_html=True)
             if st.button("Acessar PDV", key="nav_pdv", use_container_width=True):
@@ -121,9 +126,9 @@ if check_password():
         with col2:
             st.markdown("""
             <div class="card-container">
-                <div style="font-size: 36px; margin-bottom: 10px;">📦</div>
-                <h3 style="margin: 0 0 8px 0; color: #1f1f1f; font-size: 20px;">Estoque (Gerenciar)</h3>
-                <p style="color: #666; font-size: 14px; margin-bottom: 0px;">Consultar tabela, cadastrar itens e editar preços ou quantidades.</p>
+                <div style="font-size: 32px; margin-bottom: 8px;">📦</div>
+                <h3 style="margin: 0 0 6px 0; color: #1f1f1f; font-size: 18px;">Estoque (Gerenciar)</h3>
+                <p style="color: #666; font-size: 13px; margin: 0; line-height: 1.4;">Consultar tabela, cadastrar itens e editar preços ou quantidades.</p>
             </div>
             """, unsafe_allow_html=True)
             if st.button("Acessar Estoque", key="nav_estoque", use_container_width=True):
@@ -133,9 +138,9 @@ if check_password():
         with col3:
             st.markdown("""
             <div class="card-container">
-                <div style="font-size: 36px; margin-bottom: 10px;">💵</div>
-                <h3 style="margin: 0 0 8px 0; color: #1f1f1f; font-size: 20px;">Caixa (Balcão)</h3>
-                <p style="color: #666; font-size: 14px; margin-bottom: 0px;">Entradas e baixas manuais rápidas no estoque e balcão.</p>
+                <div style="font-size: 32px; margin-bottom: 8px;">💵</div>
+                <h3 style="margin: 0 0 6px 0; color: #1f1f1f; font-size: 18px;">Caixa (Balcão)</h3>
+                <p style="color: #666; font-size: 13px; margin: 0; line-height: 1.4;">Entradas e baixas manuais rápidas no estoque e balcão.</p>
             </div>
             """, unsafe_allow_html=True)
             if st.button("Acessar Caixa", key="nav_caixa", use_container_width=True):
