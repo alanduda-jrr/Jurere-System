@@ -5,17 +5,25 @@ from PIL import Image
 
 st.set_page_config(page_title="Gerenciamento de Estoque", page_icon="📦", layout="wide")
 
-# CSS para compactar o topo do card e alinhar a imagem perfeitamente sem espaços extras
+# CSS agressivo para eliminar o espaçamento interno superior dos containers no Streamlit
 st.markdown("""
 <style>
+    /* Remove o padding interno superior do container do Streamlit */
+    [data-testid="stVerticalBlock"] [data-testid="stVerticalBlock"] {
+        gap: 0.2rem !important;
+    }
+    div[data-testid="stContainer"] {
+        padding-top: 5px !important;
+        padding-bottom: 5px !important;
+    }
     .card-img-box {
         width: 100%;
         height: 110px;
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: center;
-        margin-top: 5px;
-        margin-bottom: 5px;
+        margin-top: 0px !important;
+        margin-bottom: 0px !important;
     }
     .card-img-box img {
         max-height: 110px !important;
@@ -284,7 +292,7 @@ else:
             alerta_txt = " (Baixo!)" if qtd <= min_q else ""
 
             card_html = f"""
-            <div style="font-size: 11px; line-height: 1.3; margin-bottom: 5px; text-align: center;">
+            <div style="font-size: 11px; line-height: 1.3; margin-bottom: 2px; text-align: center;">
               <b style="font-size: 12px; display: block; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333;" title="{produto_nome}">{produto_nome}</b>
               
               <div style="background-color: {bg_estoque}; color: {cor_estoque}; padding: 3px 6px; border-radius: 4px; margin-bottom: 3px; font-weight: bold; text-align: center;">
