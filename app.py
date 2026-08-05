@@ -38,7 +38,19 @@ st.markdown(f"""
     """, unsafe_allow_html=True)
 
 ARQUIVO_ESTOQUE = "estoque.csv"
-CATEGORIAS_PADRAO = ["Bebidas", "Lanches", "Porções", "Sobremesas", "Outros"]
+
+# Categorias padronizadas em ordem alfabética estrita
+CATEGORIAS_PADRAO = [
+    "Água",
+    "Cervejas",
+    "Drinks com álcool",
+    "Isotônicos e energéticos",
+    "Porções",
+    "Refrigerantes",
+    "Salgados fritos e assados",
+    "Sobremesas",
+    "Outros"
+]
 
 def carregar_dados():
     if os.path.exists(ARQUIVO_ESTOQUE):
@@ -145,9 +157,7 @@ if check_password():
         quantidade = st.number_input("Quantidade Inicial", min_value=0, step=1)
         
         st.subheader("Imagem do Item")
-        st.info("💡 Dica: Tire o print da imagem, clique dentro da caixa tracejada abaixo e aperte **Ctrl+V**, ou arraste a imagem para dentro dela.")
-        
-        imagem_arquivo = st.file_uploader("Arraste a imagem ou clique para selecionar", type=["png", "jpg", "jpeg"])
+        imagem_arquivo = st.file_uploader("Enviar imagem do computador", type=["png", "jpg", "jpeg"])
         
         caminho_salvo = None
         if imagem_arquivo is not None:
