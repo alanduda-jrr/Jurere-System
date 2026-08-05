@@ -68,6 +68,27 @@ def carregar_dados():
 def salvar_dados(df):
     df.to_csv(ARQUIVO_ESTOQUE, index=False)
 
+# Função para redimensionar e padronizar imagens mantendo proporção e qualidade
+def processar_e_salvar_imagem(imagem_upload, nome_arquivo_destino):
+    os.makedirs("imagens_produtos", exist_ok=True)
+    caminho_completo = os.path.join("imagens_produtos", nome_arquivo_destino)
+    
+    try:
+        img = Image.open(imagem_upload)
+        # Converte para RGB caso seja RGBA (PNG transparente) para evitar erros ao salvar em JPEG
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+            
+        # Redimensiona mantendo a proporção (Thumbnail com limite máximo de 400x400 pixels)
+        img.thumbnail((400, 400), Image.Resampling.LANCZOS)
+        
+        # Salva otimizado
+        img.save(caminho_completo, "JPEG", quality=90)
+        return caminho_completo
+    except Exception as e:
+        st.error(f"Erro ao processar imagem: {e}")
+        return None
+
 if 'estoque' not in st.session_state:
     st.session_state['estoque'] = carregar_dados()
 
@@ -157,15 +178,19 @@ if check_password():
         quantidade = st.number_input("Quantidade Inicial", min_value=0, step=1)
         
         st.subheader("Imagem do Item")
-        imagem_arquivo = st.file_uploader("Enviar imagem do computador", type=["png", "jpg", "jpeg"])
+        imagem_arquivo = st.file_uploader("Enviar imagem (será redimensionada automaticamente)", type=["png", "jpg", "jpeg", "webp"])
         
         caminho_salvo = None
         if imagem_arquivo is not None:
-            os.makedirs("imagens_produtos", exist_ok=True)
-            caminho_salvo = os.path.join("imagens_produtos", imagem_arquivo.name)
-            with open(caminho_salvo, "wb") as f:
-                f.write(imagem_arquivo.getbuffer())
-            st.image(caminho_salvo, width=200)
+            # Nome limpo baseado no produto
+            nome_limpo = "".join(c for c in nome if c.isalnum() or c in (' ', '_', '-')).strip().replace(' ', '_')
+            if not nome_limpo:
+                nome_limpo = "produto"
+            nome_arquivo_final = f"{nome_limpo}.jpg"
+            
+            caminho_salvo = processar_e_salvar_imagem(imagem_arquivo, nome_arquivo_final)
+            if caminho_salvo:
+                st.image(caminho_salvo, width=200, caption="Prévia redimensionada")
 
         if st.button("Salvar Item"):
             if nome and categoria:
@@ -229,7 +254,7 @@ if check_password():
                 else:
                     st.write("Sem imagem cadastrada.")
                 
-                alterar_img = st.file_uploader("Enviar nova imagem (opcional)", type=["png", "jpg", "jpeg"])
+                alterar_img = st.file_uploader("Enviar nova imagem (opcional)", type=["png", "jpg", "jpeg", "webp"])
                 
                 atualizar_btn = st.form_submit_button("Salvar Alterações")
                 
@@ -242,11 +267,14 @@ if check_password():
                     st.session_state['estoque'].at[idx, 'Quantidade'] = nova_qtd
                     
                     if alterar_img is not None:
-                        os.makedirs("imagens_produtos", exist_ok=True)
-                        novo_caminho = os.path.join("imagens_produtos", alterar_img.name)
-                        with open(novo_caminho, "wb") as f:
-                            f.write(alterar_img.getbuffer())
-                        st.session_state['estoque'].at[idx, 'Caminho_Imagem'] = novo_caminho
+                        nome_limpo = "".join(c for c in novo_nome if c.isalnum() or c in (' ', '_', '-')).strip().replace(' ', '_')
+                        if not nome_limpo:
+                            nome_limpo = "produto"
+                        nome_arquivo_final = f"{nome_limpo}_{item_escolhido_id}.jpg"
+                        
+                        novo_caminho = processar_e_salvar_imagem(alterar_img, nome_arquivo_final)
+                        if novo_caminho:
+                            st.session_state['estoque'].at[idx, 'Caminho_Imagem'] = novo_caminho
                         
                     salvar_dados(st.session_state['estoque'])
                     st.success("Item atualizado com sucesso!")
