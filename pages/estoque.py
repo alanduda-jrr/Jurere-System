@@ -1,23 +1,24 @@
 import os
 import pandas as pd
 import streamlit as st
-from PIL import Image, ImageOps
+from PIL import Image
 
 st.set_page_config(page_title="Gerenciamento de Estoque", page_icon="📦", layout="wide")
 
-# CSS rigoroso para padronizar o tamanho dos cards e das imagens na galeria
+# CSS refinado para exibir a imagem de forma compacta e alinhada
 st.markdown("""
 <style>
     .card-img-box {
         width: 100%;
-        height: 150px;
+        height: 120px;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 10px;
+        margin-bottom: 5px;
     }
     .card-img-box img {
-        max-height: 150px !important;
+        max-height: 115px !important;
+        max-width: 100% !important;
         width: auto !important;
         object-fit: contain !important;
     }
@@ -73,28 +74,25 @@ def carregar_vendas():
   return pd.DataFrame(columns=["ID_Venda", "Tipo", "Descricao", "Valor", "Forma_Pagamento", "Horario"])
 
 def redimensionar_e_padronizar_imagem(imagem_file, nome_produto):
-  """Redimensiona e insere a imagem em um canvas quadrado padrão para manter o alinhamento perfeito."""
+  """Ajusta a imagem cortando excessos e otimizando o tamanho para ocupar o espaço ideal sem margens mortas."""
   try:
     os.makedirs(PASTA_IMAGENS, exist_ok=True)
     img = Image.open(imagem_file)
     if img.mode in ("RGBA", "P"):
-      img = img.convert("RGB")
-    
-    # Redimensiona mantendo a proporção máxima de 300x300
-    img.thumbnail((300, 300))
-    
-    # Cria uma imagem quadrada de fundo branco (ou transparente se preferir) para padronizar
-    tamanho_canvas = (300, 300)
-    canvas = Image.new("RGB", tamanho_canvas, (255, 255, 255))
-    
-    # Cola a imagem redimensionada exatamente no centro do canvas
-    paste_x = (tamanho_canvas[0] - img.width) // 2
-    paste_y = (tamanho_canvas[1] - img.height) // 2
-    canvas.paste(img, (paste_x, paste_y))
+      # Converte para RGB mantendo fundo branco se houver transparência
+      background = Image.new("RGB", img.size, (255, 255, 255))
+      if img.mode == "RGBA":
+        background.paste(img, mask=img.split()[3])
+      else:
+        background.paste(img)
+      img = background
+
+    # Redimensiona proporcionalmente limitando a uma altura máxima de 300px
+    img.thumbnail((300, 300), Image.Resampling.LANCZOS)
     
     nome_arquivo_limpo = "".join(c for c in nome_produto if c.isalnum() or c in (' ', '_', '-')).strip().replace(' ', '_')
     caminho_completo = os.path.join(PASTA_IMAGENS, f"{nome_arquivo_limpo}.jpg")
-    canvas.save(caminho_completo, "JPEG", quality=90)
+    img.save(caminho_completo, "JPEG", quality=90)
     return caminho_completo
   except Exception as e:
     return ""
