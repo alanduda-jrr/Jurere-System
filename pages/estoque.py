@@ -71,7 +71,6 @@ def redimensionar_e_salvar_imagem(imagem_file, nome_produto):
 df_estoque = carregar_estoque()
 df_caixa = carregar_vendas()
 
-# Função de Modal para Edição
 @st.dialog("✏️ Editar Produto")
 def modal_editar(row_id):
   df = carregar_estoque()
@@ -126,7 +125,7 @@ def modal_editar(row_id):
       st.rerun()
 
 st.title("📦 Gerenciamento de Estoque")
-st.markdown("Catálogo compacto em grade de 5 colunas com forte destaque para estoque e vendas.")
+st.markdown("Catálogo compacto em grade de 5 colunas com textos centralizados.")
 
 if "msg_sucesso" in st.session_state:
   st.success(st.session_state["msg_sucesso"])
@@ -240,9 +239,9 @@ else:
           bg_estoque = "#f8d7da" if qtd <= min_q else "#d4edda"
           alerta_txt = " (Baixo!)" if qtd <= min_q else ""
 
-          # Card HTML reestruturado dando destaque total a Estoque e Vendas logo no topo
+          # Textos centralizados com text-align: center
           card_html = f"""
-          <div style="font-size: 11px; line-height: 1.3; margin-bottom: 5px;">
+          <div style="font-size: 11px; line-height: 1.3; margin-bottom: 5px; text-align: center;">
             <b style="font-size: 12px; display: block; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333;">{produto_nome}</b>
             
             <div style="background-color: {bg_estoque}; color: {cor_estoque}; padding: 3px 6px; border-radius: 4px; margin-bottom: 3px; font-weight: bold; text-align: center;">
