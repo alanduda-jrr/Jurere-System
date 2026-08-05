@@ -72,7 +72,7 @@ df_estoque = carregar_estoque()
 df_caixa = carregar_vendas()
 
 st.title("📦 Gerenciamento de Estoque")
-st.markdown("Catálogo compacto em grade de 5 colunas com novas categorias.")
+st.markdown("Catálogo compacto em grade de 5 colunas com atualização automatizada.")
 
 aba1, aba2 = st.tabs(["➕ Cadastrar Novo Item", "🖼️ Mini Galeria de Estoque"])
 
@@ -139,7 +139,6 @@ with aba2:
 
     st.divider()
 
-    # Grade estrita de 5 colunas por linha
     cols = st.columns(5)
     
     for idx, row in df_galeria.reset_index().iterrows():
@@ -159,7 +158,6 @@ with aba2:
           min_q = int(row['Estoque Mínimo']) if pd.notna(row['Estoque Mínimo']) else 0
           cat_atual = str(row['Categoria'])
 
-          # Vendas na última semana
           vendas_semana = 0
           if not df_caixa.empty and "Descricao" in df_caixa.columns:
             nome_prod = produto_nome.lower()
@@ -182,7 +180,6 @@ with aba2:
           """
           st.markdown(card_html, unsafe_allow_html=True)
 
-          # Botão Alterar que abre o modal de edição e exclusão
           with st.popover("✏️ Alterar", use_container_width=True):
             st.markdown(f"### Editar: {produto_nome}")
             
@@ -206,7 +203,6 @@ with aba2:
                 if nova_img:
                   caminho_final = redimensionar_e_salvar_imagem(nova_img, novo_nome)
 
-                # Atualiza no DataFrame
                 idx_linha = df_estoque[df_estoque["ID"] == row["ID"]].index
                 df_estoque.loc[idx_linha, "Produto"] = novo_nome
                 df_estoque.loc[idx_linha, "Categoria"] = nova_cat
@@ -218,13 +214,5 @@ with aba2:
                 df_estoque.loc[idx_linha, "Imagem"] = caminho_final
 
                 salvar_estoque(df_estoque)
-                st.success("✅ Atualizado com sucesso!")
+                st.toast("✅ Alteração realizada com sucesso!", icon="🎉")
                 st.rerun()
-
-            # Opção de exclusão restrita apenas dentro do menu de alteração
-            st.divider()
-            if st.button("🗑️ Excluir Definitivamente", key=f"del_btn_{row['ID']}", use_container_width=True, type="primary"):
-              df_estoque = df_estoque[df_estoque["ID"] != row["ID"]]
-              salvar_estoque(df_estoque)
-              st.success("Item excluído!")
-              st.rerun()
