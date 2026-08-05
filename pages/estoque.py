@@ -71,10 +71,69 @@ def redimensionar_e_salvar_imagem(imagem_file, nome_produto):
 df_estoque = carregar_estoque()
 df_caixa = carregar_vendas()
 
-st.title("📦 Gerenciamento de Estoque")
-st.markdown("Cadastrar ou editar estoque de itens.")
+# Função de Modal para Edição (Garante o fechamento automático e mensagem na tela principal)
+@st.dialog("✏️ Editar Produto")
+def modal_editar(row_id):
+  df = carregar_estoque()
+  row_data = df[df["ID"] == row_id]
+  if row_data.empty:
+    st.error("Item não encontrado.")
+    return
+  
+  row = row_data.iloc[0]
+  
+  produto_nome = str(row['Produto'])
+  custo = float(row['Preço de Custo (R$)']) if pd.notna(row['Preço de Custo (R$)']) else 0.0
+  venda = float(row['Preço de Venda (R$)']) if pd.notna(row['Preço de Venda (R$)']) else 0.0
+  qtd = int(row['Quantidade']) if pd.notna(row['Quantidade']) else 0
+  min_q = int(row['Estoque Mínimo']) if pd.notna(row['Estoque Mínimo']) else 0
+  cat_atual = str(row['Categoria'])
 
-aba1, aba2 = st.tabs(["➕ Cadastrar Novo Item", "🖼️ Estoque"])
+  with st.form(key=f"form_modal_{row_id}"):
+    novo_nome = st.text_input("Nome", value=produto_nome)
+    
+    cat_index = LISTA_CATEGORIAS.index(cat_atual) if cat_atual in LISTA_CATEGORIAS else 0
+    nova_cat = st.selectbox("Categoria", LISTA_CATEGORIAS, index=cat_index)
+
+    novo_custo = st.number_input("Preço Custo", value=float(custo), min_value=0.0, format="%.2f")
+    novo_venda = st.number_input("Preço Venda", value=float(venda), min_value=0.0, format="%.2f")
+    nova_qtd = st.number_input("Quantidade", value=int(qtd), min_value=0, step=1)
+    novo_min = st.number_input("Estoque Mínimo", value=int(min_q), min_value=0, step=1)
+    nova_img = st.file_uploader("Nova Foto (Opcional)", type=["png", "jpg", "jpeg"])
+
+    salvar_alteracao = st.form_submit_button("💾 Salvar Alterações", use_container_width=True)
+
+    if salvar_alteracao:
+      nova_margem = ((novo_venda - novo_custo) / novo_venda * 100) if novo_venda > 0 else 0.0
+      caminho_final = str(row["Imagem"])
+      if nova_img:
+        caminho_final = redimensionar_e_salvar_imagem(nova_img, novo_nome)
+
+      idx_linha = df[df["ID"] == row_id].index
+      df.loc[idx_linha, "Produto"] = novo_nome
+      df.loc[idx_linha, "Categoria"] = nova_cat
+      df.loc[idx_linha, "Preço de Custo (R$)"] = novo_custo
+      df.loc[idx_linha, "Preço de Venda (R$)"] = novo_venda
+      df.loc[idx_linha, "Margem (%)"] = round(nova_margem, 2)
+      df.loc[idx_linha, "Quantidade"] = nova_qtd
+      df.loc[idx_linha, "Estoque Mínimo"] = novo_min
+      df.loc[idx_linha, "Imagem"] = caminho_final
+
+      salvar_estoque(df)
+      
+      # Salva mensagem de sucesso no session_state para exibir na tela principal após fechar o modal
+      st.session_state["msg_sucesso"] = f"✅ Alteração realizada com sucesso no produto '{novo_nome}'!"
+      st.rerun()
+
+st.title("📦 Gerenciamento de Estoque")
+st.markdown("Catálogo compacto em grade de 5 colunas com janelas modulares de edição.")
+
+# Exibe mensagem de sucesso vinda de salvamentos anteriores
+if "msg_sucesso" in st.session_state:
+  st.success(st.session_state["msg_sucesso"])
+  del st.session_state["msg_sucesso"]
+
+aba1, aba2 = st.tabs(["➕ Cadastrar Novo Item", "🖼️ Mini Galeria de Estoque"])
 
 with aba1:
   st.subheader("Cadastro de Produto")
@@ -103,6 +162,7 @@ with aba1:
       if not nome_produto or preco_venda <= 0:
         st.error("⚠️ Preencha os campos obrigatórios (*).")
       else:
+        df_estoque = carregar_estoque()
         novo_id = int(df_estoque["ID"].max() + 1) if not df_estoque.empty and pd.notna(df_estoque["ID"].max()) else 1
         caminho_imagem = redimensionar_e_salvar_imagem(imagem_file, nome_produto) if imagem_file else ""
 
@@ -126,6 +186,7 @@ with aba1:
 with aba2:
   st.subheader("Galeria Compacta")
 
+  df_estoque = carregar_estoque()
   if df_estoque.empty or df_estoque["Produto"].dropna().empty:
     st.info("Nenhum produto cadastrado no momento.")
   else:
@@ -156,7 +217,6 @@ with aba2:
           margem = float(row['Margem (%)']) if pd.notna(row['Margem (%)']) else 0.0
           qtd = int(row['Quantidade']) if pd.notna(row['Quantidade']) else 0
           min_q = int(row['Estoque Mínimo']) if pd.notna(row['Estoque Mínimo']) else 0
-          cat_atual = str(row['Categoria'])
 
           vendas_semana = 0
           if not df_caixa.empty and "Descricao" in df_caixa.columns:
@@ -180,39 +240,6 @@ with aba2:
           """
           st.markdown(card_html, unsafe_allow_html=True)
 
-          with st.popover("✏️ Alterar", use_container_width=True):
-            st.markdown(f"### Editar: {produto_nome}")
-            
-            with st.form(key=f"form_alt_{row['ID']}"):
-              novo_nome = st.text_input("Nome", value=produto_nome)
-              
-              cat_index = LISTA_CATEGORIAS.index(cat_atual) if cat_atual in LISTA_CATEGORIAS else 0
-              nova_cat = st.selectbox("Categoria", LISTA_CATEGORIAS, index=cat_index)
-
-              novo_custo = st.number_input("Preço Custo", value=float(custo), min_value=0.0, format="%.2f")
-              novo_venda = st.number_input("Preço Venda", value=float(venda), min_value=0.0, format="%.2f")
-              nova_qtd = st.number_input("Quantidade", value=int(qtd), min_value=0, step=1)
-              novo_min = st.number_input("Estoque Mínimo", value=int(min_q), min_value=0, step=1)
-              nova_img = st.file_uploader("Nova Foto (Opcional)", type=["png", "jpg", "jpeg"], key=f"img_up_{row['ID']}")
-
-              salvar_alteracao = st.form_submit_button("💾 Salvar Alterações", use_container_width=True)
-
-              if salvar_alteracao:
-                nova_margem = ((novo_venda - novo_custo) / novo_venda * 100) if novo_venda > 0 else 0.0
-                caminho_final = caminho_img
-                if nova_img:
-                  caminho_final = redimensionar_e_salvar_imagem(nova_img, novo_nome)
-
-                idx_linha = df_estoque[df_estoque["ID"] == row["ID"]].index
-                df_estoque.loc[idx_linha, "Produto"] = novo_nome
-                df_estoque.loc[idx_linha, "Categoria"] = nova_cat
-                df_estoque.loc[idx_linha, "Preço de Custo (R$)"] = novo_custo
-                df_estoque.loc[idx_linha, "Preço de Venda (R$)"] = novo_venda
-                df_estoque.loc[idx_linha, "Margem (%)"] = round(nova_margem, 2)
-                df_estoque.loc[idx_linha, "Quantidade"] = nova_qtd
-                df_estoque.loc[idx_linha, "Estoque Mínimo"] = novo_min
-                df_estoque.loc[idx_linha, "Imagem"] = caminho_final
-
-                salvar_estoque(df_estoque)
-                st.toast("✅ Alteração realizada com sucesso!", icon="🎉")
-                st.rerun()
+          # Botão que abre a janela modal de edição limpa e isolada
+          if st.button("✏️ Alterar", key=f"btn_alt_{row['ID']}", use_container_width=True):
+            modal_editar(row['ID'])
