@@ -130,13 +130,16 @@ if df_estoque.empty or df_estoque["Produto"].dropna().empty:
   st.info("Nenhum produto cadastrado no estoque.")
 else:
   df_estoque["Quantidade"] = pd.to_numeric(df_estoque["Quantidade"], errors="coerce").fillna(0)
+  
+  # Filtra apenas itens com estoque maior que 0 e ordena alfabeticamente pelo nome do produto
   df_disponivel = df_estoque[df_estoque["Quantidade"] > 0].copy()
+  df_disponivel = df_disponivel.sort_values(by="Produto", ascending=True)
 
   col_f1, col_f2 = st.columns([2, 1])
   with col_f1:
     termo_busca = st.text_input("🔍 Pesquisa:", placeholder="Filtrar produto...", label_visibility="collapsed")
   with col_f2:
-    categorias_disponiveis = ["Todas"] + list(df_disponivel["Categoria"].dropna().unique())
+    categorias_disponiveis = ["Todas"] + sorted(list(df_disponivel["Categoria"].dropna().unique()))
     cat_filtro = st.selectbox("Categoria", categorias_disponiveis, label_visibility="collapsed")
 
   if termo_busca:
