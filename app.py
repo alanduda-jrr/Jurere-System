@@ -44,19 +44,18 @@ def tela_login():
                     st.error("Usuário ou senha incorretos.")
 
 def painel_principal():
-    # Barra lateral com menu de navegação por rádio/botões limpo
+    # Barra lateral limpa e profissional
     st.sidebar.title(f"Bem-vindo(a),")
     st.sidebar.markdown(f"**{st.session_state['usuario']}**")
     st.sidebar.markdown(f"Perfil: *{st.session_state['perfil']}*")
     st.sidebar.divider()
     
-    st.sidebar.markdown("### 📂 Menu do Sistema")
+    st.sidebar.markdown("### 📂 Módulos do Sistema")
     
-    # Seletor de páginas na barra lateral
-    pagina_selecionada = st.sidebar.radio(
-        "Navegação",
-        ["Início / Dashboard", "Gerenciar Estoque", "Frente de Caixa (PDV)"],
-        label_visibility="collapsed"
+    # Menu Principal limpo em formato selectbox (substitui os botões de rádio em bolinhas)
+    modulo_selecionado = st.sidebar.selectbox(
+        "Selecione o Módulo",
+        ["Início / Dashboard", "Estoque", "PDV (Vendas)", "Caixa"]
     )
     
     st.sidebar.divider()
@@ -67,8 +66,8 @@ def painel_principal():
         st.session_state['perfil'] = ""
         st.rerun()
 
-    # Redirecionamento limpo para os códigos das páginas na pasta pages/
-    if pagina_selecionada == "Início / Dashboard":
+    # Roteamento dos Módulos com Submenus
+    if modulo_selecionado == "Início / Dashboard":
         st.title("📊 Painel Inicial - Sistema Jurerê")
         st.markdown("Visão geral rápida do sistema comercial.")
         
@@ -80,31 +79,29 @@ def painel_principal():
         with col3:
             st.metric(label="Vendas Hoje", value="R$ 0,00", delta="0 realizadas")
 
-        st.divider()
-        st.markdown("### Atalhos Rápidos")
-        st.markdown("""
-        - Utilize o menu na **barra lateral à esquerda** para navegar entre as seções.
-        """)
-        
-    elif pagina_selecionada == "Gerenciar Estoque":
-        # Importa e executa o código da página de estoque diretamente
+    elif modulo_selecionado == "Estoque":
+        # Submenus de Estoque organizados internamente de forma profissional
         import importlib.util
         spec = importlib.util.spec_from_file_location("estoque", "pages/estoque.py")
         estoque_module = importlib.util.module_from_spec(spec)
-        # Executa o script da página de estoque na mesma sessão
         try:
             spec.loader.exec_module(estoque_module)
         except Exception as e:
-            st.error(f"Erro ao carregar a página de estoque: {e}")
+            st.error(f"Erro ao carregar o módulo de estoque: {e}")
             
-    elif pagina_selecionada == "Frente de Caixa (PDV)":
+    elif modulo_selecionado == "PDV (Vendas)":
         import importlib.util
         spec = importlib.util.spec_from_file_location("pdv", "pages/pdv.py")
         pdv_module = importlib.util.module_from_spec(spec)
         try:
             spec.loader.exec_module(pdv_module)
         except Exception as e:
-            st.error(f"Erro ao carregar a página do PDV: {e}")
+            st.error(f"Erro ao carregar o módulo do PDV: {e}")
+            
+    elif modulo_selecionado == "Caixa":
+        st.title("💵 Caixa e Comandas")
+        st.markdown("Gerenciamento de faturamento, comandas abertas e fechamento de caixa.")
+        st.info("Módulo de Caixa em estruturação para a próxima etapa.")
 
 # Execução principal baseada no estado de autenticação
 if not st.session_state['autenticado']:
