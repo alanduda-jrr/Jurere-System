@@ -16,23 +16,18 @@ st.markdown("""
     }
     .card-img-box {
         width: 100%;
-        height: 110px;
+        height: 105px;
         display: flex;
         align-items: center;
         justify-content: center;
         margin-top: 0px !important;
         margin-bottom: 0px !important;
-        pointer-events: none;
     }
     .card-img-box img {
-        max-height: 110px !important;
+        max-height: 105px !important;
         max-width: 100% !important;
         width: auto !important;
         object-fit: contain !important;
-    }
-    /* Oculta o botão de expandir/zoom do Streamlit sobre as imagens */
-    button[kind="header"] {
-        display: none !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -172,16 +167,18 @@ else:
           venda = float(row['Preço de Venda (R$)']) if pd.notna(row['Preço de Venda (R$)']) else 0.0
           qtd = int(row['Quantidade'])
 
+          # Bloco HTML integrado contendo nome, estoque e valor de venda juntos sem sobreposição
           card_html = f"""
-          <div style="font-size: 11px; line-height: 1.4; margin-top: 4px; margin-bottom: 4px; text-align: center;">
-            <b style="font-size: 12px; display: block; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333;" title="{produto_nome}">{produto_nome}</b>
-            <div style="background-color: #d4edda; color: #28a745; padding: 3px 6px; border-radius: 4px; margin-bottom: 4px; font-weight: bold;">📦 Estoque: {qtd} un.</div>
-            <div style="border-top: 1px solid #eee; padding-top: 4px; color: #333; font-size: 12px;">
-              <div>Venda: <b>R$ {venda:.2f}</b></div>
+          <div style="font-size: 11px; line-height: 1.4; margin-top: 4px; margin-bottom: 8px; text-align: center;">
+            <b style="font-size: 12px; display: block; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333;" title="{produto_nome}">{produto_nome}</b>
+            <div style="background-color: #d4edda; color: #28a745; padding: 2px 4px; border-radius: 4px; margin-bottom: 4px; font-weight: bold;">📦 Estoque: {qtd} un.</div>
+            <div style="color: #333; font-size: 12px; border-top: 1px solid #eee; padding-top: 3px;">
+              Venda: <b>R$ {venda:.2f}</b>
             </div>
           </div>
           """
           st.markdown(card_html, unsafe_allow_html=True)
           
+          # Botão posicionado de forma limpa abaixo de todo o conteúdo do card
           if st.button("➕ Adicionar", key=f"btn_add_{row['ID']}", use_container_width=True, type="primary"):
             modal_adicionar_comanda(row['ID'])
