@@ -121,23 +121,20 @@ def modal_editar(row_id):
 
       salvar_estoque(df)
       
-      # Define mensagem e força o estado para abrir na aba da galeria
       st.session_state["msg_sucesso"] = f"✅ Alteração realizada com sucesso no produto '{novo_nome}'!"
       st.session_state["aba_ativa"] = "galeria"
       st.rerun()
 
 st.title("📦 Gerenciamento de Estoque")
-st.markdown("Catálogo compacto em grade de 5 colunas com janelas modulares de edição.")
+st.markdown("Catálogo compacto em grade de 5 colunas com forte destaque para estoque e vendas.")
 
 if "msg_sucesso" in st.session_state:
   st.success(st.session_state["msg_sucesso"])
   del st.session_state["msg_sucesso"]
 
-# Define a aba padrão se não existir
 if "aba_ativa" not in st.session_state:
-  st.session_state["aba_ativa"] = "cadastro"
+  st.session_state["aba_ativa"] = "galeria"
 
-# Criação das abas controlada pelo session_state
 aba_selecionada = st.radio(
     "Navegação",
     ["➕ Cadastrar Novo Item", "🖼️ Mini Galeria de Estoque"],
@@ -239,17 +236,27 @@ else:
               if nome_prod in str(v_row["Descricao"]).lower():
                 vendas_semana += 1
 
-          cor_estoque = "red" if qtd <= min_q else "green"
+          cor_estoque = "#d9534f" if qtd <= min_q else "#28a745"
+          bg_estoque = "#f8d7da" if qtd <= min_q else "#d4edda"
           alerta_txt = " (Baixo!)" if qtd <= min_q else ""
 
+          # Card HTML reestruturado dando destaque total a Estoque e Vendas logo no topo
           card_html = f"""
           <div style="font-size: 11px; line-height: 1.3; margin-bottom: 5px;">
-            <b style="font-size: 12px; display: block; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{produto_nome}</b>
-            <div>Custo: R$ {custo:.2f}</div>
-            <div>Venda: R$ {venda:.2f}</div>
-            <div>Margem: <b>{margem:.1f}%</b></div>
-            <div>Estoque: <b style="color: {cor_estoque};">{qtd} un.{alerta_txt}</b></div>
-            <div style="color: #0b7a20;">Vendas (7d): <b>{vendas_semana} un.</b></div>
+            <b style="font-size: 12px; display: block; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333;">{produto_nome}</b>
+            
+            <div style="background-color: {bg_estoque}; color: {cor_estoque}; padding: 3px 6px; border-radius: 4px; margin-bottom: 3px; font-weight: bold; text-align: center;">
+              📦 Estoque: {qtd} un.{alerta_txt}
+            </div>
+            
+            <div style="background-color: #e2f0d9; color: #276a16; padding: 3px 6px; border-radius: 4px; margin-bottom: 6px; font-weight: bold; text-align: center;">
+              📈 Vendas (7d): {vendas_semana} un.
+            </div>
+
+            <div style="border-top: 1px solid #eee; padding-top: 4px; color: #555;">
+              <div>Custo: R$ {custo:.2f} | Venda: R$ {venda:.2f}</div>
+              <div>Margem: <b>{margem:.1f}%</b></div>
+            </div>
           </div>
           """
           st.markdown(card_html, unsafe_allow_html=True)
