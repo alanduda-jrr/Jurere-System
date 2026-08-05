@@ -1,25 +1,23 @@
 import os
 import pandas as pd
 import streamlit as st
-from PIL import Image
+from PIL import Image, ImageOps
 
 st.set_page_config(page_title="Gerenciamento de Estoque", page_icon="📦", layout="wide")
 
-# CSS para padronizar perfeitamente a altura e alinhamento dos cards da galeria
+# CSS rigoroso para padronizar o tamanho dos cards e das imagens na galeria
 st.markdown("""
 <style>
     .card-img-box {
         width: 100%;
-        height: 160px;
+        height: 150px;
         display: flex;
         align-items: center;
         justify-content: center;
         margin-bottom: 10px;
-        background-color: transparent;
     }
     .card-img-box img {
         max-height: 150px !important;
-        max-width: 100% !important;
         width: auto !important;
         object-fit: contain !important;
     }
@@ -74,17 +72,29 @@ def carregar_vendas():
     return pd.read_csv(ARQUIVO_CAIXA)
   return pd.DataFrame(columns=["ID_Venda", "Tipo", "Descricao", "Valor", "Forma_Pagamento", "Horario"])
 
-def redimensionar_e_salvar_imagem(imagem_file, nome_produto):
+def redimensionar_e_padronizar_imagem(imagem_file, nome_produto):
+  """Redimensiona e insere a imagem em um canvas quadrado padrão para manter o alinhamento perfeito."""
   try:
     os.makedirs(PASTA_IMAGENS, exist_ok=True)
     img = Image.open(imagem_file)
+    if img.mode in ("RGBA", "P"):
+      img = img.convert("RGB")
+    
+    # Redimensiona mantendo a proporção máxima de 300x300
     img.thumbnail((300, 300))
+    
+    # Cria uma imagem quadrada de fundo branco (ou transparente se preferir) para padronizar
+    tamanho_canvas = (300, 300)
+    canvas = Image.new("RGB", tamanho_canvas, (255, 255, 255))
+    
+    # Cola a imagem redimensionada exatamente no centro do canvas
+    paste_x = (tamanho_canvas[0] - img.width) // 2
+    paste_y = (tamanho_canvas[1] - img.height) // 2
+    canvas.paste(img, (paste_x, paste_y))
+    
     nome_arquivo_limpo = "".join(c for c in nome_produto if c.isalnum() or c in (' ', '_', '-')).strip().replace(' ', '_')
-    extensao = os.path.splitext(imagem_file.name)[1].lower()
-    if not extensao:
-      extensao = ".png"
-    caminho_completo = os.path.join(PASTA_IMAGENS, f"{nome_arquivo_limpo}{extensao}")
-    img.save(caminho_completo)
+    caminho_completo = os.path.join(PASTA_IMAGENS, f"{nome_arquivo_limpo}.jpg")
+    canvas.save(caminho_completo, "JPEG", quality=90)
     return caminho_completo
   except Exception as e:
     return ""
@@ -127,7 +137,7 @@ def modal_editar(row_id):
       nova_margem = ((novo_venda - novo_custo) / novo_venda * 100) if novo_venda > 0 else 0.0
       caminho_final = str(row["Imagem"])
       if nova_img:
-        caminho_final = redimensionar_e_salvar_imagem(nova_img, novo_nome)
+        caminho_final = redimensionar_e_padronizar_imagem(nova_img, novo_nome)
 
       idx_linha = df[df["ID"] == row_id].index
       df.loc[idx_linha, "Produto"] = novo_nome
@@ -155,7 +165,6 @@ if "msg_sucesso" in st.session_state:
 if "aba_ativa" not in st.session_state:
   st.session_state["aba_ativa"] = "galeria"
 
-# Botões padronizados em colunas simétricas
 col_b1, col_b2, col_vazio = st.columns([1.5, 1.8, 6.7])
 with col_b1:
   btn_cad = st.button("➕ CADASTRAR", use_container_width=True, type="primary" if st.session_state["aba_ativa"] == "cadastro" else "secondary")
@@ -199,7 +208,7 @@ if st.session_state["aba_ativa"] == "cadastro":
       else:
         df_estoque = carregar_estoque()
         novo_id = int(df_estoque["ID"].max() + 1) if not df_estoque.empty and pd.notna(df_estoque["ID"].max()) else 1
-        caminho_imagem = redimensionar_e_salvar_imagem(imagem_file, nome_produto) if imagem_file else ""
+        caminho_imagem = redimensionar_e_padronizar_imagem(imagem_file, nome_produto) if imagem_file else ""
 
         novo_dado = pd.DataFrame([{
             "ID": novo_id,
@@ -252,7 +261,6 @@ else:
           with st.container(border=True):
             caminho_img = str(row["Imagem"])
             
-            # Caixa HTML rígida para manter a imagem alinhada e com o mesmo espaço em todos os cards
             if caminho_img and caminho_img != "nan" and os.path.exists(caminho_img):
               st.markdown(f"<div class='card-img-box'>", unsafe_allow_html=True)
               st.image(caminho_img, use_container_width=False)
