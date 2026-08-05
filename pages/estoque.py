@@ -2,7 +2,6 @@ import os
 import pandas as pd
 import streamlit as st
 from PIL import Image
-from datetime import datetime, timedelta
 
 st.set_page_config(page_title="Gerenciamento de Estoque", page_icon="📦", layout="wide")
 
@@ -37,17 +36,16 @@ def carregar_estoque():
 def salvar_estoque(df):
   df.to_csv(ARQUIVO_ESTOQUE, index=False)
 
-def carregar_vendas_semana():
+def carregar_vendas():
   if os.path.exists(ARQUIVO_CAIXA):
-    df_vendas = pd.read_csv(ARQUIVO_CAIXA)
-    return df_vendas
+    return pd.read_csv(ARQUIVO_CAIXA)
   return pd.DataFrame(columns=["ID_Venda", "Tipo", "Descricao", "Valor", "Forma_Pagamento", "Horario"])
 
 def redimensionar_e_salvar_imagem(imagem_file, nome_produto):
   try:
     os.makedirs(PASTA_IMAGENS, exist_ok=True)
     img = Image.open(imagem_file)
-    img.thumbnail((300, 300))
+    img.thumbnail((250, 250))
     nome_arquivo_limpo = "".join(c for c in nome_produto if c.isalnum() or c in (' ', '_', '-')).strip().replace(' ', '_')
     extensao = os.path.splitext(imagem_file.name)[1].lower()
     if not extensao:
@@ -59,10 +57,10 @@ def redimensionar_e_salvar_imagem(imagem_file, nome_produto):
     return ""
 
 df_estoque = carregar_estoque()
-df_caixa = carregar_vendas_semana()
+df_caixa = carregar_vendas()
 
-st.title("📦 Gerenciamento de Estoque - Mini Galeria")
-st.markdown("Catálogo compacto em grade de 5 colunas com métricas e histórico recente.")
+st.title("📦 Gerenciamento de Estoque")
+st.markdown("Catálogo compacto em grade de 5 colunas com opção de edição e exclusão detalhada.")
 
 aba1, aba2 = st.tabs(["➕ Cadastrar Novo Item", "🖼️ Mini Galeria de Estoque"])
 
@@ -87,7 +85,6 @@ with aba1:
       margem_calc = ((preco_venda - preco_custo) / preco_venda) * 100
 
     st.markdown(f"ℹ️ **Margem de Lucro Estimada:** `{margem_calc:.2f}%`")
-
     submit_cadastro = st.form_submit_button("Salvar Produto no Estoque", use_container_width=True)
 
     if submit_cadastro:
@@ -115,7 +112,7 @@ with aba1:
         st.rerun()
 
 with aba2:
-  st.subheader("Catálogo Compacto")
+  st.subheader("Galeria Compacta")
 
   if df_estoque.empty or df_estoque["Produto"].dropna().empty:
     st.info("Nenhum produto cadastrado no momento.")
@@ -130,50 +127,93 @@ with aba2:
 
     st.divider()
 
-    # Grade compacta de 5 colunas por linha
-    num_colunas = 5
-    cols = st.columns(num_colunas)
+    # Grade estrita de 5 colunas por linha
+    cols = st.columns(5)
     
     for idx, row in df_galeria.reset_index().iterrows():
-      with cols[idx % num_colunas]:
+      with cols[idx % 5]:
         with st.container(border=True):
-          # Imagem menor centralizada
           caminho_img = str(row["Imagem"])
           if caminho_img and caminho_img != "nan" and os.path.exists(caminho_img):
             st.image(caminho_img, use_container_width=True)
           else:
-            st.markdown("<p style='text-align: center; color: gray; font-size: 12px;'>Sem foto</p>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align: center; color: gray; font-size: 11px; padding: 15px 0;'>Sem foto</div>", unsafe_allow_html=True)
 
-          # Nome do produto em destaque compacto
-          st.markdown(f"**{row['Produto']}**")
-          
-          # Informações solicitadas em formato reduzido
-          st.markdown(f"<span style='font-size: 11px;'>Custo: R$ {row['Preço de Custo (R$)']:.2f}<br>Venda: R$ {row['Preço de Venda (R$)']:.2f}<br>Margem: <b>{row['Margem (%)']}%</b></span>", unsafe_allow_html=True)
-          
-          # Estoque atual e alerta
+          produto_nome = str(row['Produto'])
+          custo = float(row['Preço de Custo (R$)']) if pd.notna(row['Preço de Custo (R$)']) else 0.0
+          venda = float(row['Preço de Venda (R$)']) if pd.notna(row['Preço de Venda (R$)']) else 0.0
+          margem = float(row['Margem (%)']) if pd.notna(row['Margem (%)']) else 0.0
           qtd = int(row['Quantidade']) if pd.notna(row['Quantidade']) else 0
           min_q = int(row['Estoque Mínimo']) if pd.notna(row['Estoque Mínimo']) else 0
-          
-          if qtd <= min_q:
-            st.markdown(f"<span style='color: red; font-size: 11px;'>⚠️ Estoque: <b>{qtd}</b> (Mín: {min_q})</span>", unsafe_allow_html=True)
-          else:
-            st.markdown(f"<span style='font-size: 11px;'>Estoque: <b>{qtd}</b> un.</span>", unsafe_allow_html=True)
+          cat_atual = str(row['Categoria'])
 
-          # Cálculo de vendas na última semana associadas ao nome do produto
+          # Vendas na última semana
           vendas_semana = 0
           if not df_caixa.empty and "Descricao" in df_caixa.columns:
-            # Conta ocorrências do nome do produto nas descrições de venda da última semana
-            nome_prod = str(row['Produto']).lower()
+            nome_prod = produto_nome.lower()
             for _, v_row in df_caixa.iterrows():
-              desc = str(v_row["Descricao"]).lower()
-              if nome_prod in desc:
+              if nome_prod in str(v_row["Descricao"]).lower():
                 vendas_semana += 1
 
-          st.markdown(f"<span style='font-size: 11px; color: green;'>Vendas (7d): <b>{vendas_semana} un.</b></span>", unsafe_allow_html=True)
+          cor_estoque = "red" if qtd <= min_q else "green"
+          alerta_txt = " (Baixo!)" if qtd <= min_q else ""
 
-          # Botão de exclusão compacto
-          if st.button("🗑️ Excluir", key=f"del_{row['ID']}", use_container_width=True):
-            df_estoque = df_estoque[df_estoque["ID"] != row["ID"]]
-            salvar_estoque(df_estoque)
-            st.success("Removido!")
-            st.rerun()
+          card_html = f"""
+          <div style="font-size: 11px; line-height: 1.3; margin-bottom: 5px;">
+            <b style="font-size: 12px; display: block; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{produto_nome}</b>
+            <div>Custo: R$ {custo:.2f}</div>
+            <div>Venda: R$ {venda:.2f}</div>
+            <div>Margem: <b>{margem:.1f}%</b></div>
+            <div>Estoque: <b style="color: {cor_estoque};">{qtd} un.{alerta_txt}</b></div>
+            <div style="color: #0b7a20;">Vendas (7d): <b>{vendas_semana} un.</b></div>
+          </div>
+          """
+          st.markdown(card_html, unsafe_allow_html=True)
+
+          # Botão Alterar que abre o modal de edição e exclusão
+          with st.popover("✏️ Alterar", use_container_width=True):
+            st.markdown(f"### Editar: {produto_nome}")
+            
+            with st.form(key=f"form_alt_{row['ID']}"):
+              novo_nome = st.text_input("Nome", value=produto_nome)
+              
+              lista_cats = ["Bebidas", "Porções", "Pratos Principais", "Sobremesas", "Insumos", "Outros"]
+              cat_index = lista_cats.index(cat_atual) if cat_atual in lista_cats else 0
+              nova_cat = st.selectbox("Categoria", lista_cats, index=cat_index)
+
+              novo_custo = st.number_input("Preço Custo", value=float(custo), min_value=0.0, format="%.2f")
+              novo_venda = st.number_input("Preço Venda", value=float(venda), min_value=0.0, format="%.2f")
+              nova_qtd = st.number_input("Quantidade", value=int(qtd), min_value=0, step=1)
+              novo_min = st.number_input("Estoque Mínimo", value=int(min_q), min_value=0, step=1)
+              nova_img = st.file_uploader("Nova Foto (Opcional)", type=["png", "jpg", "jpeg"], key=f"img_up_{row['ID']}")
+
+              salvar_alteracao = st.form_submit_button("💾 Salvar Alterações", use_container_width=True)
+
+              if salvar_alteracao:
+                nova_margem = ((novo_venda - novo_custo) / novo_venda * 100) if novo_venda > 0 else 0.0
+                caminho_final = caminho_img
+                if nova_img:
+                  caminho_final = redimensionar_e_salvar_imagem(nova_img, novo_nome)
+
+                # Atualiza no DataFrame
+                idx_linha = df_estoque[df_estoque["ID"] == row["ID"]].index
+                df_estoque.loc[idx_linha, "Produto"] = novo_nome
+                df_estoque.loc[idx_linha, "Categoria"] = nova_cat
+                df_estoque.loc[idx_linha, "Preço de Custo (R$)"] = novo_custo
+                df_estoque.loc[idx_linha, "Preço de Venda (R$)"] = novo_venda
+                df_estoque.loc[idx_linha, "Margem (%)"] = round(nova_margem, 2)
+                df_estoque.loc[idx_linha, "Quantidade"] = nova_qtd
+                df_estoque.loc[idx_linha, "Estoque Mínimo"] = novo_min
+                df_estoque.loc[idx_linha, "Imagem"] = caminho_final
+
+                salvar_estoque(df_estoque)
+                st.success("✅ Atualizado com sucesso!")
+                st.rerun()
+
+            # Opção de exclusão restrita apenas dentro do menu de alteração
+            st.divider()
+            if st.button("🗑️ Excluir Definitivamente", key=f"del_btn_{row['ID']}", use_container_width=True, type="primary"):
+              df_estoque = df_estoque[df_estoque["ID"] != row["ID"]]
+              salvar_estoque(df_estoque)
+              st.success("Item excluído!")
+              st.rerun()
