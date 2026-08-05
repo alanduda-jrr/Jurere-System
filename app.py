@@ -7,7 +7,8 @@ import base64
 
 st.set_page_config(page_title="Controle de Estoque e PDV - Jurerê", layout="wide")
 
-# Função para converter a logo em base64 para aplicar no CSS do fundo
+ARQUIVO_LOGO = "logo.png" 
+
 def get_base64_of_bin_file(bin_file):
     if os.path.exists(bin_file):
         with open(bin_file, 'rb') as f:
@@ -15,11 +16,8 @@ def get_base64_of_bin_file(bin_file):
         return base64.b64encode(data).decode()
     return None
 
-# Mude para o nome exato do arquivo da sua logo que você subiu no GitHub (ex: logo.png)
-ARQUIVO_LOGO = "logo.png" 
 logo_base64 = get_base64_of_bin_file(ARQUIVO_LOGO)
 
-# Estilo visual: Fundo cinza claro e marca d'água com a logo com transparência
 background_css = ""
 if logo_base64:
     background_css = f"""
@@ -40,6 +38,7 @@ st.markdown(f"""
     """, unsafe_allow_html=True)
 
 ARQUIVO_ESTOQUE = "estoque.csv"
+CATEGORIAS_PADRAO = ["Bebidas", "Lanches", "Porções", "Sobremesas", "Outros"]
 
 def carregar_dados():
     if os.path.exists(ARQUIVO_ESTOQUE):
@@ -92,11 +91,11 @@ if check_password():
         if df.empty:
             st.info("Nenhum item cadastrado no estoque ainda. Cadastre itens no menu lateral.")
         else:
-            categorias = sorted(df['Categoria'].dropna().unique().tolist())
-            if not categorias:
-                categorias = ["Geral"]
+            categorias_disponiveis = sorted(df['Categoria'].dropna().unique().tolist())
+            if not categorias_disponiveis:
+                categorias_disponiveis = ["Geral"]
                 
-            categoria_selecionada = st.selectbox("📂 Selecione a Categoria:", categorias)
+            categoria_selecionada = st.selectbox("📂 Selecione a Categoria:", categorias_disponiveis)
             
             itens_categoria = df[df['Categoria'] == categoria_selecionada]
             
@@ -134,13 +133,22 @@ if check_password():
         st.header("Cadastrar Novo Item")
         
         nome = st.text_input("Nome do Item")
-        categoria = st.text_input("Categoria (ex: Bebidas, Lanches, Porções, Sobremesas)")
+        
+        # Categoria padronizada com selectbox
+        cat_escolhida = st.selectbox("Categoria", CATEGORIAS_PADRAO)
+        if cat_escolhida == "Outros":
+            categoria = st.text_input("Digite o nome da nova categoria:")
+        else:
+            categoria = cat_escolhida
+            
         descricao = st.text_area("Descrição")
         custo = st.number_input("Preço de Custo / Venda (R$)", min_value=0.0, format="%.2f")
         quantidade = st.number_input("Quantidade Inicial", min_value=0, step=1)
         
-        st.subheader("Imagem do Item")
-        imagem_arquivo = st.file_uploader("Enviar imagem do computador", type=["png", "jpg", "jpeg"])
+        st.subheader("Imagem do Item (Cole com Ctrl+V ou envie arquivo)")
+        st.info("💡 Para colar o print: clique dentro da caixa de envio abaixo e aperte Ctrl+V.")
+        
+        imagem_arquivo = st.file_uploader("Enviar imagem do computador ou colar", type=["png", "jpg", "jpeg"])
         
         caminho_salvo = None
         if imagem_arquivo is not None:
@@ -192,7 +200,16 @@ if check_password():
             
             with st.form("form_edicao"):
                 novo_nome = st.text_input("Nome", value=item_atual['Nome'])
-                nova_categoria = st.text_input("Categoria", value=item_atual['Categoria'])
+                
+                # Categoria na edição
+                cat_atual_val = item_atual['Categoria']
+                idx_cat = CATEGORIAS_PADRAO.index(cat_atual_val) if cat_atual_val in CATEGORIAS_PADRAO else len(CATEGORIAS_PADRAO)-1
+                nova_cat_escolhida = st.selectbox("Categoria", CATEGORIAS_PADRAO, index=idx_cat)
+                if nova_cat_escolhida == "Outros":
+                    nova_categoria = st.text_input("Digite a categoria:", value=cat_atual_val)
+                else:
+                    nova_categoria = nova_cat_escolhida
+                    
                 nova_desc = st.text_area("Descrição", value=item_atual['Descrição'])
                 novo_custo = st.number_input("Custo (R$)", value=float(item_atual['Custo']), format="%.2f")
                 nova_qtd = st.number_input("Quantidade", value=int(item_atual['Quantidade']), step=1)
