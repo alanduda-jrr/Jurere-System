@@ -8,7 +8,7 @@ st.set_page_config(page_title="PDV - Frente de Caixa e Comandas", page_icon="�
 st.markdown("""
 <style>
     [data-testid="stVerticalBlock"] [data-testid="stVerticalBlock"] {
-        gap: 0.2rem !important;
+        gap: 0.1rem !important;
     }
     div[data-testid="stContainer"] {
         padding-top: 5px !important;
@@ -131,7 +131,6 @@ if df_estoque.empty or df_estoque["Produto"].dropna().empty:
 else:
   df_estoque["Quantidade"] = pd.to_numeric(df_estoque["Quantidade"], errors="coerce").fillna(0)
   
-  # Filtra apenas itens com estoque maior que 0 e ordena alfabeticamente pelo nome do produto
   df_disponivel = df_estoque[df_estoque["Quantidade"] > 0].copy()
   df_disponivel = df_disponivel.sort_values(by="Produto", ascending=True)
 
@@ -159,7 +158,8 @@ else:
           caminho_img = str(row["Imagem"])
           if caminho_img and caminho_img != "nan" and os.path.exists(caminho_img):
             st.markdown(f"<div class='card-img-box'>", unsafe_allow_html=True)
-            st.image(caminho_img, use_container_width=False)
+            # Adicionado expanded=False para remover o botão de zoom que sobrepunha o card
+            st.image(caminho_img, use_container_width=False, expanded=False)
             st.markdown("</div>", unsafe_allow_html=True)
           else:
             st.markdown("<div class='card-img-box' style='color: gray; font-size: 11px;'>Sem foto</div>", unsafe_allow_html=True)
@@ -169,9 +169,9 @@ else:
           qtd = int(row['Quantidade'])
 
           card_html = f"""
-          <div style="font-size: 11px; line-height: 1.3; margin-bottom: 2px; text-align: center;">
+          <div style="font-size: 11px; line-height: 1.4; margin-top: 4px; margin-bottom: 4px; text-align: center;">
             <b style="font-size: 12px; display: block; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333;" title="{produto_nome}">{produto_nome}</b>
-            <div style="background-color: #d4edda; color: #28a745; padding: 3px 6px; border-radius: 4px; margin-bottom: 6px; font-weight: bold;">📦 Estoque: {qtd} un.</div>
+            <div style="background-color: #d4edda; color: #28a745; padding: 3px 6px; border-radius: 4px; margin-bottom: 4px; font-weight: bold;">📦 Estoque: {qtd} un.</div>
             <div style="border-top: 1px solid #eee; padding-top: 4px; color: #333; font-size: 12px;">
               <div>Venda: <b>R$ {venda:.2f}</b></div>
             </div>
