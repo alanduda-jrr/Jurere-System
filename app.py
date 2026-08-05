@@ -3,6 +3,8 @@ import pandas as pd
 from PIL import Image
 import os
 
+from database.estoque import carregar_dados, salvar_dados
+
 st.set_page_config(page_title="Início", layout="wide")
 
 ARQUIVO_ESTOQUE = "estoque.csv"
@@ -19,7 +21,7 @@ CATEGORIAS_PADRAO = [
     "Outros"
 ]
 
-def carregar_dados():
+
     if os.path.exists(ARQUIVO_ESTOQUE):
         try:
             df = pd.read_csv(ARQUIVO_ESTOQUE)
@@ -32,7 +34,7 @@ def carregar_dados():
             pass
     return pd.DataFrame(columns=['ID', 'Nome', 'Categoria', 'Descrição', 'Preço_Custo', 'Custo', 'Quantidade', 'Qtd_Minima', 'Caminho_Imagem'])
 
-def salvar_dados(df):
+
     df.to_csv(ARQUIVO_ESTOQUE, index=False)
 
 def processar_e_salvar_imagem(imagem_upload, nome_arquivo_destino):
