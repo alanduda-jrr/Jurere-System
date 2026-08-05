@@ -30,13 +30,12 @@ st.markdown("Gerenciamento de faturamento, vendas realizadas e fechamento de cai
 df_caixa = carregar_caixa()
 
 if df_caixa.empty or df_caixa["Valor"].dropna().empty:
-  st.info("📭 Nenhuma venda ou movimentação registrada no caixa ainda. Realize vendas pelo PDV para preencher os relatórios.")
+  st.info("📭 Nenhuma movimentação registrada no caixa ainda. Realize vendas pelo PDV para preencher os relatórios.")
 else:
   df_caixa["Horario"] = pd.to_datetime(df_caixa["Horario"], errors="coerce")
   df_caixa["Data"] = df_caixa["Horario"].dt.date
   df_caixa["Valor"] = pd.to_numeric(df_caixa["Valor"], errors="coerce").fillna(0.0)
 
-  # Filtro por data de hoje ou período
   hoje = datetime.now().date()
   
   col_m1, col_m2, col_m3 = st.columns(3)
@@ -68,7 +67,6 @@ else:
 
   st.subheader("📜 Histórico Completo de Movimentações")
   
-  # Filtro visual na tabela
   tipo_filtro = st.selectbox("Filtrar por Tipo:", ["Todos", "Venda", "Sangria/Retirada", "Suprimento"])
   if tipo_filtro != "Todos":
     df_exibicao = df_caixa[df_caixa["Tipo"] == tipo_filtro]
@@ -86,6 +84,6 @@ else:
           "Valor": st.column_config.NumberColumn("Valor (R$)", format="R$ %.2f"),
           "Forma_Pagamento": "Forma de Pagamento",
           "Horario": "Data/Hora",
-          "Data": None # Oculta coluna auxiliar
+          "Data": None
       }
   )
