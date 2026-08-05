@@ -22,12 +22,17 @@ st.markdown("""
         justify-content: center;
         margin-top: 0px !important;
         margin-bottom: 0px !important;
+        pointer-events: none;
     }
     .card-img-box img {
         max-height: 110px !important;
         max-width: 100% !important;
         width: auto !important;
         object-fit: contain !important;
+    }
+    /* Oculta o botão de expandir/zoom do Streamlit sobre as imagens */
+    button[kind="header"] {
+        display: none !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -158,8 +163,7 @@ else:
           caminho_img = str(row["Imagem"])
           if caminho_img and caminho_img != "nan" and os.path.exists(caminho_img):
             st.markdown(f"<div class='card-img-box'>", unsafe_allow_html=True)
-            # Adicionado expanded=False para remover o botão de zoom que sobrepunha o card
-            st.image(caminho_img, use_container_width=False, expanded=False)
+            st.image(caminho_img, use_container_width=False)
             st.markdown("</div>", unsafe_allow_html=True)
           else:
             st.markdown("<div class='card-img-box' style='color: gray; font-size: 11px;'>Sem foto</div>", unsafe_allow_html=True)
