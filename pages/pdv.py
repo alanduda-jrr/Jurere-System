@@ -106,12 +106,10 @@ def modal_adicionar_comanda(row_id):
       if estoque_atual < qtd_comprar:
         st.error("❌ Quantidade superior ao estoque disponível!")
       else:
-        # Dá baixa no estoque
         idx_linha = df[df["ID"] == row_id].index[0]
         df.loc[idx_linha, "Quantidade"] = estoque_atual - qtd_comprar
         salvar_estoque(df)
 
-        # Registra no caixa
         valor_total = preco_venda * qtd_comprar
         descricao_venda = f"{qtd_comprar}x {produto_nome}"
         registrar_venda_caixa(descricao_venda, valor_total, forma_pgto)
@@ -131,8 +129,7 @@ df_estoque = carregar_estoque()
 if df_estoque.empty or df_estoque["Produto"].dropna().empty:
   st.info("Nenhum produto cadastrado no estoque.")
 else:
-  # Filtra apenas itens com estoque maior que 0
-  df_estoque["Quantidade"] = pd.to_numeric(df_estoque["Quantidade"], errors="fillna").fillna(0)
+  df_estoque["Quantidade"] = pd.to_numeric(df_estoque["Quantidade"], errors="coerce").fillna(0)
   df_disponivel = df_estoque[df_estoque["Quantidade"] > 0].copy()
 
   col_f1, col_f2 = st.columns([2, 1])
