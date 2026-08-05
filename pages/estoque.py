@@ -125,7 +125,7 @@ def modal_editar(row_id):
       st.rerun()
 
 st.title("📦 Gerenciamento de Estoque")
-st.markdown("Catálogo compacto em grade de 5 colunas com textos centralizados.")
+st.markdown("Cadastro e edição de itens / Movimentação de estoque")
 
 if "msg_sucesso" in st.session_state:
   st.success(st.session_state["msg_sucesso"])
@@ -136,13 +136,13 @@ if "aba_ativa" not in st.session_state:
 
 aba_selecionada = st.radio(
     "Navegação",
-    ["➕ Cadastrar Novo Item", "🖼️ Mini Galeria de Estoque"],
+    ["➕ CADASTRAR ITEM", "📦 ESTOQUE/MOVIMENTAÇÃO"],
     index=1 if st.session_state["aba_ativa"] == "galeria" else 0,
     horizontal=True,
     label_visibility="collapsed"
 )
 
-if "Cadastrar" in aba_selecionada:
+if "CADASTRAR" in aba_selecionada:
   st.session_state["aba_ativa"] = "cadastro"
   st.subheader("Cadastro de Produto")
   with st.form("form_cadastro_avancado", clear_on_submit=True):
@@ -239,7 +239,6 @@ else:
           bg_estoque = "#f8d7da" if qtd <= min_q else "#d4edda"
           alerta_txt = " (Baixo!)" if qtd <= min_q else ""
 
-          # Textos centralizados com text-align: center
           card_html = f"""
           <div style="font-size: 11px; line-height: 1.3; margin-bottom: 5px; text-align: center;">
             <b style="font-size: 12px; display: block; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333;">{produto_nome}</b>
