@@ -56,33 +56,28 @@ def carregar_dados():
     if os.path.exists(ARQUIVO_ESTOQUE):
         try:
             df = pd.read_csv(ARQUIVO_ESTOQUE)
-            colunas_necessarias = ['ID', 'Nome', 'Categoria', 'Descrição', 'Custo', 'Quantidade', 'Caminho_Imagem']
+            colunas_necessarias = ['ID', 'Nome', 'Categoria', 'Descrição', 'Preço_Custo', 'Custo', 'Quantidade', 'Qtd_Minima', 'Caminho_Imagem']
             for col in colunas_necessarias:
                 if col not in df.columns:
                     df[col] = None
             return df
         except Exception:
             pass
-    return pd.DataFrame(columns=['ID', 'Nome', 'Categoria', 'Descrição', 'Custo', 'Quantidade', 'Caminho_Imagem'])
+    return pd.DataFrame(columns=['ID', 'Nome', 'Categoria', 'Descrição', 'Preço_Custo', 'Custo', 'Quantidade', 'Qtd_Minima', 'Caminho_Imagem'])
 
 def salvar_dados(df):
     df.to_csv(ARQUIVO_ESTOQUE, index=False)
 
-# Função para redimensionar e padronizar imagens mantendo proporção e qualidade
 def processar_e_salvar_imagem(imagem_upload, nome_arquivo_destino):
     os.makedirs("imagens_produtos", exist_ok=True)
     caminho_completo = os.path.join("imagens_produtos", nome_arquivo_destino)
     
     try:
         img = Image.open(imagem_upload)
-        # Converte para RGB caso seja RGBA (PNG transparente) para evitar erros ao salvar em JPEG
         if img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
             
-        # Redimensiona mantendo a proporção (Thumbnail com limite máximo de 400x400 pixels)
         img.thumbnail((400, 400), Image.Resampling.LANCZOS)
-        
-        # Salva otimizado
         img.save(caminho_completo, "JPEG", quality=90)
         return caminho_completo
     except Exception as e:
@@ -146,14 +141,16 @@ if check_password():
                     else:
                         st.write("*(Sem imagem)*")
                     
-                    st.write(f"**Preço:** R$ {float(row['Custo']):.2f}")
-                    st.write(f"**Em estoque:** {int(row['Quantidade'])} un.")
-                    st.write(f"*{row['Descrição']}*")
+                    preco_venda_val = row['Custo'] if pd.notna(row['Custo']) else row.get('Preço_Custo', 0)
+                    st.write(f"**Preço:** R$ {float(preco_venda_val):.2f}")
+                    st.write(f"**Em estoque:** {int(row['Quantidade']) if pd.notna(row['Quantidade']) else 0} un.")
+                    st.write(f"*{row['Descrição'] if pd.notna(row['Descrição']) else ''}*")
                     
                     if st.button(f"Registrar Saída / Venda", key=f"venda_{row['ID']}"):
-                        if int(row['Quantidade']) > 0:
+                        qtd_atual = int(row['Quantidade']) if pd.notna(row['Quantidade']) else 0
+                        if qtd_atual > 0:
                             idx = st.session_state['estoque'][st.session_state['estoque']['ID'] == row['ID']].index[0]
-                            st.session_state['estoque'].at[idx, 'Quantidade'] = int(row['Quantidade']) - 1
+                            st.session_state['estoque'].at[idx, 'Quantidade'] = qtd_atual - 1
                             salvar_dados(st.session_state['estoque'])
                             st.success(f"Venda de '{row['Nome']}' realizada com sucesso!")
                             st.rerun()
@@ -163,55 +160,76 @@ if check_password():
 
     # 2. CADASTRAR ITEM
     elif escolha == "Cadastrar Item":
-        st.header("Cadastrar Novo Item")
-        
-        nome = st.text_input("Nome do Item")
-        
-        cat_escolhida = st.selectbox("Categoria (Padronizada)", CATEGORIAS_PADRAO)
-        if cat_escolhida == "Outros":
-            categoria = st.text_input("Digite o nome da nova categoria:")
-        else:
-            categoria = cat_escolhida
-            
-        descricao = st.text_area("Descrição")
-        custo = st.number_input("Preço de Custo / Venda (R$)", min_value=0.0, format="%.2f")
-        quantidade = st.number_input("Quantidade Inicial", min_value=0, step=1)
-        
-        st.subheader("Imagem do Item")
-        imagem_arquivo = st.file_uploader("Enviar imagem (será redimensionada automaticamente)", type=["png", "jpg", "jpeg", "webp"])
-        
-        caminho_salvo = None
-        if imagem_arquivo is not None:
-            # Nome limpo baseado no produto
-            nome_limpo = "".join(c for c in nome if c.isalnum() or c in (' ', '_', '-')).strip().replace(' ', '_')
-            if not nome_limpo:
-                nome_limpo = "produto"
-            nome_arquivo_final = f"{nome_limpo}.jpg"
-            
-            caminho_salvo = processar_e_salvar_imagem(imagem_arquivo, nome_arquivo_final)
-            if caminho_salvo:
-                st.image(caminho_salvo, width=200, caption="Prévia redimensionada")
+        st.header("✨ Cadastrar Novo Item")
+        st.markdown("Preencha os campos abaixo de forma rápida utilizando a tecla **Tab**.")
 
-        if st.button("Salvar Item"):
-            if nome and categoria:
-                df_atual = st.session_state['estoque']
-                novo_id = int(df_atual['ID'].max() + 1) if not df_atual.empty and pd.notna(df_atual['ID'].max()) else 1
+        with st.form("form_cadastro_item", clear_on_submit=True):
+            col1, col2 = st.columns(2)
+
+            with col1:
+                nome = st.text_input("Nome do Item *", placeholder="Ex: Heineken 600ml")
                 
-                novo_dado = pd.DataFrame([{
-                    'ID': novo_id,
-                    'Nome': nome,
-                    'Categoria': categoria,
-                    'Descrição': descricao,
-                    'Custo': custo,
-                    'Quantidade': quantidade,
-                    'Caminho_Imagem': caminho_salvo
-                }])
+                cat_escolhida = st.selectbox("Categoria (Padronizada) *", CATEGORIAS_PADRAO)
+                if cat_escolhida == "Outros":
+                    categoria = st.text_input("Especifique a nova categoria *")
+                else:
+                    categoria = cat_escolhida
                 
-                st.session_state['estoque'] = pd.concat([df_atual, novo_dado], ignore_index=True)
-                salvar_dados(st.session_state['estoque'])
-                st.success(f"Item '{nome}' cadastrado com sucesso!")
-            else:
-                st.warning("O Nome e a Categoria do item são obrigatórios.")
+                preco_custo = st.number_input("Preço de Custo (R$)", min_value=0.0, format="%.2f", value=0.0)
+                preco_venda = st.number_input("Preço de Venda (R$) *", min_value=0.0, format="%.2f", value=0.0)
+
+            with col2:
+                quantidade_inicial = st.number_input("Quantidade Inicial", min_value=0, step=1, value=0)
+                quantidade_minima = st.number_input("Quantidade Mínima (Alerta)", min_value=0, step=1, value=5)
+                
+                descricao = st.text_area("Descrição do Produto", placeholder="Detalhes, ingredientes ou observações...", height=108)
+
+            # Cálculo visual de margem em tempo real dentro do form
+            if preco_venda > 0 and preco_custo > 0:
+                lucro_rs = preco_venda - preco_custo
+                margem_pct = (lucro_rs / preco_venda) * 100
+                markup_pct = (lucro_rs / preco_custo) * 100
+                st.info(f"📊 **Análise de Margem:** Lucro de **R$ {lucro_rs:.2f}** por unidade | Margem de Lucro: **{margem_pct:.1f}%** (Markup: {markup_pct:.1f}%)")
+            elif preco_venda > 0 and preco_custo == 0:
+                st.info("📊 **Análise de Margem:** Preço de custo zerado (100% de margem calculada sobre a venda).")
+
+            st.markdown("---")
+            st.subheader("🖼️ Foto do Produto")
+            st.markdown("Envie a foto (será redimensionada e ajustada proporcionalmente de forma automática).")
+            imagem_arquivo = st.file_uploader("Escolher imagem", type=["png", "jpg", "jpeg", "webp"], label_visibility="collapsed")
+
+            submitted = st.form_submit_button("💾 Salvar Novo Item no Estoque", use_container_width=True)
+
+            if submitted:
+                if nome and categoria and preco_venda > 0:
+                    caminho_salvo = None
+                    if imagem_arquivo is not None:
+                        nome_limpo = "".join(c for c in nome if c.isalnum() or c in (' ', '_', '-')).strip().replace(' ', '_')
+                        if not nome_limpo:
+                            nome_limpo = "produto"
+                        nome_arquivo_final = f"{nome_limpo}.jpg"
+                        caminho_salvo = processar_e_salvar_imagem(imagem_arquivo, nome_arquivo_final)
+
+                    df_atual = st.session_state['estoque']
+                    novo_id = int(df_atual['ID'].max() + 1) if not df_atual.empty and pd.notna(df_atual['ID'].max()) else 1
+                    
+                    novo_dado = pd.DataFrame([{
+                        'ID': novo_id,
+                        'Nome': nome,
+                        'Categoria': categoria,
+                        'Descrição': descricao,
+                        'Preço_Custo': preco_custo,
+                        'Custo': preco_venda,  # Mantido na coluna Custo para compatibilidade com o PDV
+                        'Quantidade': quantidade_inicial,
+                        'Qtd_Minima': quantidade_minima,
+                        'Caminho_Imagem': caminho_salvo
+                    }])
+                    
+                    st.session_state['estoque'] = pd.concat([df_atual, novo_dado], ignore_index=True)
+                    salvar_dados(st.session_state['estoque'])
+                    st.success(f"🎉 Item '{nome}' cadastrado com sucesso!")
+                else:
+                    st.warning("⚠️ Preencha os campos obrigatórios: Nome, Categoria e Preço de Venda maior que zero.")
 
     # 3. ESTOQUE ATUAL E TELA DE EDIÇÃO
     elif escolha == "Estoque Atual / Editar":
@@ -222,7 +240,8 @@ if check_password():
         if df.empty:
             st.info("Nenhum item cadastrado no estoque ainda.")
         else:
-            st.dataframe(df[['ID', 'Nome', 'Categoria', 'Descrição', 'Custo', 'Quantidade']], use_container_width=True)
+            cols_mostrar = [c for c in ['ID', 'Nome', 'Categoria', 'Preço_Custo', 'Custo', 'Quantidade', 'Qtd_Minima'] if c in df.columns]
+            st.dataframe(df[cols_mostrar], use_container_width=True)
             
             st.markdown("---")
             st.subheader("✏️ Editar um Item Existente")
@@ -233,19 +252,32 @@ if check_password():
             item_atual = df.loc[df['ID'] == item_escolhido_id].iloc[0]
             
             with st.form("form_edicao"):
-                novo_nome = st.text_input("Nome", value=item_atual['Nome'])
-                
-                cat_atual_val = item_atual['Categoria']
-                idx_cat = CATEGORIAS_PADRAO.index(cat_atual_val) if cat_atual_val in CATEGORIAS_PADRAO else len(CATEGORIAS_PADRAO)-1
-                nova_cat_escolhida = st.selectbox("Categoria", CATEGORIAS_PADRAO, index=idx_cat)
-                if nova_cat_escolhida == "Outros":
-                    nova_categoria = st.text_input("Digite a categoria:", value=cat_atual_val)
-                else:
-                    nova_categoria = nova_cat_escolhida
+                col_e1, col_e2 = st.columns(2)
+                with col_e1:
+                    novo_nome = st.text_input("Nome", value=item_atual['Nome'])
                     
-                nova_desc = st.text_area("Descrição", value=item_atual['Descrição'])
-                novo_custo = st.number_input("Custo (R$)", value=float(item_atual['Custo']), format="%.2f")
-                nova_qtd = st.number_input("Quantidade", value=int(item_atual['Quantidade']), step=1)
+                    cat_atual_val = item_atual['Categoria']
+                    idx_cat = CATEGORIAS_PADRAO.index(cat_atual_val) if cat_atual_val in CATEGORIAS_PADRAO else len(CATEGORIAS_PADRAO)-1
+                    nova_cat_escolhida = st.selectbox("Categoria", CATEGORIAS_PADRAO, index=idx_cat)
+                    if nova_cat_escolhida == "Outros":
+                        nova_categoria = st.text_input("Digite a categoria:", value=cat_atual_val)
+                    else:
+                        nova_categoria = nova_cat_escolhida
+                        
+                    pc_atual = float(item_atual['Preço_Custo']) if pd.notna(item_atual.get('Preço_Custo')) else 0.0
+                    novo_preco_custo = st.number_input("Preço de Custo (R$)", value=pc_atual, format="%.2f")
+                    
+                    pv_atual = float(item_atual['Custo']) if pd.notna(item_atual.get('Custo')) else 0.0
+                    novo_preco_venda = st.number_input("Preço de Venda (R$)", value=pv_atual, format="%.2f")
+
+                with col_e2:
+                    qtd_at = int(item_atual['Quantidade']) if pd.notna(item_atual.get('Quantidade')) else 0
+                    nova_qtd = st.number_input("Quantidade", value=qtd_at, step=1)
+                    
+                    qtd_min_at = int(item_atual['Qtd_Minima']) if pd.notna(item_atual.get('Qtd_Minima')) else 5
+                    nova_qtd_min = st.number_input("Quantidade Mínima", value=qtd_min_at, step=1)
+                    
+                    nova_desc = st.text_area("Descrição", value=item_atual['Descrição'] if pd.notna(item_atual['Descrição']) else "")
                 
                 st.write("Imagem atual do item:")
                 img_path_atual = item_atual['Caminho_Imagem']
@@ -263,8 +295,10 @@ if check_password():
                     st.session_state['estoque'].at[idx, 'Nome'] = novo_nome
                     st.session_state['estoque'].at[idx, 'Categoria'] = nova_categoria
                     st.session_state['estoque'].at[idx, 'Descrição'] = nova_desc
-                    st.session_state['estoque'].at[idx, 'Custo'] = novo_custo
+                    st.session_state['estoque'].at[idx, 'Preço_Custo'] = novo_preco_custo
+                    st.session_state['estoque'].at[idx, 'Custo'] = novo_preco_venda
                     st.session_state['estoque'].at[idx, 'Quantidade'] = nova_qtd
+                    st.session_state['estoque'].at[idx, 'Qtd_Minima'] = nova_qtd_min
                     
                     if alterar_img is not None:
                         nome_limpo = "".join(c for c in novo_nome if c.isalnum() or c in (' ', '_', '-')).strip().replace(' ', '_')
