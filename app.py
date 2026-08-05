@@ -1,6 +1,6 @@
 import streamlit as st
 
-# Configuração da página
+# Configuração da página principal
 st.set_page_config(
     page_title="Sistema Jurerê",
     page_icon="🔐",
@@ -44,18 +44,10 @@ def tela_login():
                     st.error("Usuário ou senha incorretos.")
 
 def painel_principal():
-    # Barra lateral com menu de navegação explícito
+    # Barra lateral de controle de sessão e logout
     st.sidebar.title(f"Bem-vindo(a),")
     st.sidebar.markdown(f"**{st.session_state['usuario']}**")
     st.sidebar.markdown(f"Perfil: *{st.session_state['perfil']}*")
-    st.sidebar.divider()
-    
-    st.sidebar.markdown("### 📂 Menu do Sistema")
-    
-    # Links apenas para as páginas dentro da pasta pages/
-    st.sidebar.page_link("pages/estoque.py", label="Gerenciar Estoque", icon="📦")
-    st.sidebar.page_link("pages/pdv.py", label="Frente de Caixa (PDV)", icon="🛒")
-    
     st.sidebar.divider()
     
     if st.sidebar.button("🚪 Sair (Logout)", use_container_width=True):
@@ -80,12 +72,10 @@ def painel_principal():
     st.divider()
     st.markdown("### Atalhos Rápidos")
     st.markdown("""
-    - Utilize o menu na **barra lateral à esquerda** para navegar entre as seções.
-    - Vá para **Gerenciar Estoque** para cadastrar ou gerenciar produtos e preços.
-    - Vá para **Frente de Caixa (PDV)** para registrar novas vendas.
+    - Utilize o menu de navegação na **barra lateral à esquerda** para acessar o **Estoque** e o **PDV**.
     """)
 
-# Execução principal baseada no estado de autenticação
+# Se não estiver autenticado, exibe a tela de login. Caso contrário, exibe o painel.
 if not st.session_state['autenticado']:
     tela_login()
 else:
