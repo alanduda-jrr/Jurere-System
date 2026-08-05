@@ -134,14 +134,16 @@ if "msg_sucesso" in st.session_state:
 if "aba_ativa" not in st.session_state:
   st.session_state["aba_ativa"] = "galeria"
 
-# Botões visuais de navegação
-col_b1, col_b2, col_vazio = st.columns([2, 2, 6])
+# Botões padronizados em colunas simétricas
+col_b1, col_b2, col_vazio = st.columns([1.5, 1.8, 6.7])
 with col_b1:
-  if st.button("➕ CADASTRAR ITEM", use_container_width=True, type="primary" if st.session_state["aba_ativa"] == "cadastro" else "secondary"):
+  btn_cad = st.button("➕ CADASTRAR", use_container_width=True, type="primary" if st.session_state["aba_ativa"] == "cadastro" else "secondary")
+  if btn_cad:
     st.session_state["aba_ativa"] = "cadastro"
     st.rerun()
 with col_b2:
-  if st.button("📦 ESTOQUE/MOVIMENTAÇÃO", use_container_width=True, type="primary" if st.session_state["aba_ativa"] == "galeria" else "secondary"):
+  btn_mov = st.button("📦 MOVIMENTAÇÃO", use_container_width=True, type="primary" if st.session_state["aba_ativa"] == "galeria" else "secondary")
+  if btn_mov:
     st.session_state["aba_ativa"] = "galeria"
     st.rerun()
 
