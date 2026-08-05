@@ -60,9 +60,9 @@ df_estoque = carregar_estoque()
 df_caixa = carregar_vendas()
 
 st.title("📦 Gerenciamento de Estoque")
-st.markdown("Catálogo compacto em grade de 5 colunas com opção de edição e exclusão detalhada.")
+st.markdown("Realizar o cadastro de novos produtos ou editar um existente.")
 
-aba1, aba2 = st.tabs(["➕ Cadastrar Novo Item", "🖼️ Mini Galeria de Estoque"])
+aba1, aba2 = st.tabs(["➕ Cadastrar Novo Item", "🖼️ Consultar Estoque"])
 
 with aba1:
   st.subheader("Cadastro de Produto")
