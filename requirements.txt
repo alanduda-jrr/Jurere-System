@@ -1,5 +1,6 @@
 Plaintext
 streamlit
 pandas
-supabase
 pillow
+supabase==2.3.0
+postgrest==0.10.6
