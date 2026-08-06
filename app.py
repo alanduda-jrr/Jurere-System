@@ -1,4 +1,17 @@
 import streamlit as st
+import pandas as pd
+from datetime import datetime
+from supabase import create_client, Client
+
+# --- CONFIGURAÇÃO DO SUPABASE ---
+# Substitua pelos seus dados reais do painel do Supabase
+URL = "SUA_URL_AQUI"
+KEY = "SUA_KEY_AQUI"
+
+try:
+    supabase: Client = create_client(URL, KEY)
+except Exception:
+    supabase = None
 
 # Configuração da página
 st.set_page_config(
@@ -52,7 +65,6 @@ def painel_principal():
     
     st.sidebar.markdown("### 📂 Módulos do Sistema")
     
-    # Menu Principal limpo em formato selectbox (substitui os botões de rádio em bolinhas)
     modulo_selecionado = st.sidebar.selectbox(
         "Selecione o Módulo",
         ["Início / Dashboard", "Estoque", "PDV (Vendas)", "Caixa"]
@@ -71,16 +83,41 @@ def painel_principal():
         st.title("📊 Painel Inicial - Sistema Jurerê")
         st.markdown("Visão geral rápida do sistema comercial.")
         
+        # Buscando dados reais do Supabase
+        total_produtos = "--"
+        total_vendas_hoje = 0.0
+        qtd_vendas_hoje = 0
+        
+        if supabase:
+            try:
+                # Contar produtos no estoque
+                res_est = supabase.table("estoque").select("id", count="exact").execute()
+                if res_est.count is not None:
+                    total_produtos = str(res_est.count)
+                
+                # Buscar vendas de hoje no caixa
+                res_caixa = supabase.table("caixa").select("*").eq("tipo", "Venda").execute()
+                if res_caixa.data:
+                    df_caixa = pd.DataFrame(res_caixa.data)
+                    if "horario" in df_caixa.columns:
+                        df_caixa["horario"] = pd.to_datetime(df_caixa["horario"], errors="coerce")
+                        df_caixa["data"] = df_caixa["horario"].dt.date
+                        hoje = datetime.now().date()
+                        vendas_hoje = df_caixa[df_caixa["data"] == hoje]
+                        total_vendas_hoje = vendas_hoje["valor"].sum() if not vendas_hoje.empty else 0.0
+                        qtd_vendas_hoje = len(vendas_hoje)
+            except Exception:
+                pass
+
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric(label="Status do Caixa", value="Aberto", delta="Operando")
         with col2:
-            st.metric(label="Produtos Cadastrados", value="--", delta="Ver Estoque")
+            st.metric(label="Produtos Cadastrados", value=total_produtos, delta="Ver Estoque")
         with col3:
-            st.metric(label="Vendas Hoje", value="R$ 0,00", delta="0 realizadas")
+            st.metric(label="Vendas Hoje", value=f"R$ {total_vendas_hoje:.2f}", delta=f"{qtd_vendas_hoje} realizadas")
 
     elif modulo_selecionado == "Estoque":
-        # Submenus de Estoque organizados internamente de forma profissional
         import importlib.util
         spec = importlib.util.spec_from_file_location("estoque", "pages/estoque.py")
         estoque_module = importlib.util.module_from_spec(spec)
@@ -101,7 +138,19 @@ def painel_principal():
     elif modulo_selecionado == "Caixa":
         st.title("💵 Caixa e Comandas")
         st.markdown("Gerenciamento de faturamento, comandas abertas e fechamento de caixa.")
-        st.info("Módulo de Caixa em estruturação para a próxima etapa.")
+        
+        if supabase:
+            try:
+                res_caixa = supabase.table("caixa").select("*").execute()
+                if res_caixa.data:
+                    df_caixa = pd.DataFrame(res_caixa.data)
+                    st.dataframe(df_caixa, use_container_width=True, hide_index=True)
+                else:
+                    st.info("Nenhuma movimentação registrada no caixa ainda.")
+            except Exception as e:
+                st.error(f"Erro ao carregar dados do caixa: {e}")
+        else:
+            st.warning("Supabase não configurado.")
 
 # Execução principal baseada no estado de autenticação
 if not st.session_state['autenticado']:
